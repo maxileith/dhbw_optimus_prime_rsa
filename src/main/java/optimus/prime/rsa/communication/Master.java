@@ -55,9 +55,9 @@ public class Master implements Runnable {
 
     private void distributeConnections() throws IOException {
         while (!this.serverSocket.isClosed()) {
-            Socket client = this.serverSocket.accept();
-            System.out.println("Connection from " + client + " established.");
-            ConnectionHandler handler = new ConnectionHandler(client, networkConfig, primes);
+            Socket slave = this.serverSocket.accept();
+            System.out.println("Connection from " + slave + " established.");
+            ConnectionHandler handler = new ConnectionHandler(slave, networkConfig, primes);
             Thread thread = new Thread(handler);
             thread.start();
             this.concurrentConnections.add(handler);
@@ -90,14 +90,14 @@ public class Master implements Runnable {
 
     private class ConnectionHandler implements Runnable {
 
-        private final Socket client;
+        private final Socket slave;
         private boolean running = true;
 
         private final NetworkConfiguration networkConfig;
         private final List<Integer> primes;
 
-        public ConnectionHandler(Socket client, NetworkConfiguration networkConfig, List<Integer> primes) {
-            this.client = client;
+        public ConnectionHandler(Socket slave, NetworkConfiguration networkConfig, List<Integer> primes) {
+            this.slave = slave;
             this.networkConfig = networkConfig;
             this.primes = primes;
         }
@@ -105,9 +105,9 @@ public class Master implements Runnable {
         @Override
         public void run() {
             try (
-                    InputStream inputStream = this.client.getInputStream();
+                    InputStream inputStream = this.slave.getInputStream();
                     ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
-                    OutputStream outputStream = this.client.getOutputStream();
+                    OutputStream outputStream = this.slave.getOutputStream();
                     ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream)
             ) {
                 while (this.running) {
@@ -138,7 +138,7 @@ public class Master implements Runnable {
             MultiMessage response = new MultiMessage();
 
             // Add slave IP-Address to network Information
-            InetAddress slaveAddress = this.client.getInetAddress();
+            InetAddress slaveAddress = this.slave.getInetAddress();
             this.networkConfig.addHost(slaveAddress);
 
             // create payload of current hosts
@@ -175,7 +175,7 @@ public class Master implements Runnable {
         public synchronized boolean stop() {
             boolean success = true;
             try {
-                this.client.close();
+                this.slave.close();
             } catch (IOException e) {
                 System.out.println("An error occurred." + e);
                 success = false;
