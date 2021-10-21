@@ -9,6 +9,7 @@ import java.util.List;
 
 import optimus.prime.rsa.communication.payloads.HostsPayload;
 import optimus.prime.rsa.communication.payloads.JoinPayload;
+import optimus.prime.rsa.communication.payloads.ResultPayload;
 import optimus.prime.rsa.communication.payloads.TaskPayload;
 import optimus.prime.rsa.main.NetworkConfiguration;
 
@@ -24,7 +25,6 @@ public class Master implements Runnable {
     private final int SLICE_SIZE = 10;
     private List<Integer> startIndicesToDo;
     private List<Integer> startIndicesInProgress;
-
 
     private Solution solution;
 
@@ -87,6 +87,10 @@ public class Master implements Runnable {
         return new TaskPayload(newStartIndex, this.SLICE_SIZE);
     }
 
+    private synchronized void markIndexAsDone(int index) {
+        this.startIndicesInProgress.remove(Integer.valueOf(index));
+    }
+
 
     private class ConnectionHandler implements Runnable {
 
@@ -95,6 +99,8 @@ public class Master implements Runnable {
 
         private final NetworkConfiguration networkConfig;
         private final List<Integer> primes;
+
+        private int currentIndex;
 
         public ConnectionHandler(Socket slave, NetworkConfiguration networkConfig, List<Integer> primes) {
             this.slave = slave;
@@ -124,6 +130,10 @@ public class Master implements Runnable {
             }
         }
 
+        public int getCurrentIndex() {
+            return this.currentIndex;
+        }
+
         private MultiMessage handleMessage(Message m) {
             return switch (m.getType()) {
                 case SLAVE_JOIN -> this.handleClientJoin(m);
@@ -146,17 +156,25 @@ public class Master implements Runnable {
             Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
             response.addMessage(hostsMessage);
 
+            // create payload for next tasks
+            TaskPayload taskPayload = getNextTaskPayload();
+            this.currentIndex = taskPayload.getStartIndex();
+            Message taskMessage = new Message(MessageType.DO_WORK, taskPayload);
+            response.addMessage(taskMessage);
+
             return response;
         }
 
         private MultiMessage handleClientFinishedWork(Message m) {
+            // except TaskPayload
             MultiMessage response = new MultiMessage();
 
             // remove done index from list
-
+            markIndexAsDone(this.currentIndex);
 
             // create new Task for slave
             TaskPayload taskPayload = getNextTaskPayload();
+            this.currentIndex = taskPayload.getStartIndex();
             Message taskMessage = new Message(MessageType.DO_WORK, taskPayload);
             response.addMessage(taskMessage);
 
@@ -165,8 +183,11 @@ public class Master implements Runnable {
 
         private MultiMessage handleSolutionFound(Message m) {
             // Key found - other slaves can stop working
+            ResultPayload resultPayload = (ResultPayload) m.getPayload();
+            int prime1 = resultPayload.getPrime1();
+            int prime2 = resultPayload.getPrime2();
 
-            Solution solution = new Solution(1, 1);
+            Solution solution = new Solution(prime1, prime2);
             markAsSolved(solution);
 
             return new MultiMessage();
