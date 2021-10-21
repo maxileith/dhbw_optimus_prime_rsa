@@ -14,19 +14,37 @@ public class Slave implements Runnable {
 
     private final NetworkConfiguration networkConfig;
 
+    private boolean running = true;
+
     public Slave(NetworkConfiguration networkConfig) {
         this.networkConfig = networkConfig;
 
         try {
+            this.socket = new Socket(
+                    networkConfig.getMasterAddress(),
+                    NetworkConfiguration.PORT
+            );
 
+            InputStream inputStream = this.socket.getInputStream();
+            ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
+            this.receiver = new Receiver(objectInputStream);
+            this.receiveThread = new Thread(this.receiver);
+            this.receiveThread.start();
         } catch(IOException e) {
-
+            System.out.println("An error occurred. " + e);
         }
     }
 
     @Override
     public void run() {
-
+        try  (
+            OutputStream outputStream = this.socket.getOutputStream();
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream)
+        ) {
+            // TODO: ExecutorService
+        } catch(IOException e) {
+            System.out.println("An error occurred." + e);
+        }
     }
 
     private class Receiver implements Runnable {
