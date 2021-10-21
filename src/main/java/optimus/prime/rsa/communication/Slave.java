@@ -1,4 +1,4 @@
-package optimus.prime;
+package optimus.prime.rsa.communication;
 
 import optimus.prime.rsa.main.NetworkConfiguration;
 import java.io.IOException;

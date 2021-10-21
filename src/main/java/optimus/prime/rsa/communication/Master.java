@@ -23,7 +23,7 @@ public class Master implements Runnable {
 
     private final int SLICE_SIZE = 10;
     private List<Integer> startIndicesToDo;
-    private List<Integer> startIndicesToDo;
+    private List<Integer> startIndicesInProgress;
 
 
     private Solution solution;
@@ -81,6 +81,9 @@ public class Master implements Runnable {
 
     private synchronized TaskPayload getNextTaskPayload() {
         int newStartIndex = this.startIndicesToDo.get(0);
+        // transfer index from ToDo to InProgress
+        this.startIndicesInProgress.add(newStartIndex);
+        this.startIndicesToDo.remove(Integer.valueOf(newStartIndex));
         return new TaskPayload(newStartIndex, this.SLICE_SIZE);
     }
 
