@@ -61,9 +61,9 @@ public class Slave implements Runnable {
             try {
                 while (this.running) {
                     Message message = (Message) this.objectInputStream.readObject();
-                    Consumer<Message> callback = callbacks.get(message.getMessageId());
-                    callback.accept(message);
-                    callbacks.remove(message.getMessageId());
+                    //Consumer<Message> callback = callbacks.get(message.getMessageId());
+                    //callback.accept(message);
+                    //callbacks.remove(message.getMessageId());
                 }
                 this.objectInputStream.close();
             } catch (IOException | ClassNotFoundException e) {
