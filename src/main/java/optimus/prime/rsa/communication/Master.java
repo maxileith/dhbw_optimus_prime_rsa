@@ -1,42 +1,46 @@
 package optimus.prime.rsa.communication;
 
 import java.io.*;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Queue;
 
 import optimus.prime.rsa.communication.payloads.HostsPayload;
-import optimus.prime.rsa.communication.payloads.JoinPayload;
-import optimus.prime.rsa.communication.payloads.ResultPayload;
+import optimus.prime.rsa.communication.payloads.SolutionPayload;
 import optimus.prime.rsa.communication.payloads.TaskPayload;
 import optimus.prime.rsa.main.NetworkConfiguration;
+import optimus.prime.rsa.main.Utils;
 
 public class Master implements Runnable {
 
     private ServerSocket serverSocket;
     private final List<ConnectionHandler> concurrentConnections = new ArrayList<>();
-    private static final int MAX_INCOMING_CLIENTS = 1000;
+    private static final int MAX_INCOMING_SLAVES = 1000;
 
     private final NetworkConfiguration networkConfig;
-    private final List<Integer> primes;
+    private final List<BigInteger> primes;
 
     private final int SLICE_SIZE = 10;
-    private List<Integer> startIndicesToDo;
+    private final Queue<Integer> startIndicesToDo;
     private List<Integer> startIndicesInProgress;
 
-    private Solution solution;
+    private SolutionPayload solution; // FIXME: noch iwas machen damit
 
-    public Master(NetworkConfiguration networkConfig, List<Integer> primes) {
+    public Master(NetworkConfiguration networkConfig, List<BigInteger> primes) {
         this.networkConfig = networkConfig;
         this.primes = primes;
-        this.startIndicesToDo = getIndicesToDo();
+
+        this.startIndicesToDo = Utils.getIndicesToDo(this.primes.size(), this.SLICE_SIZE);
 
         try {
             this.serverSocket = new ServerSocket(
                     NetworkConfiguration.PORT,
-                    MAX_INCOMING_CLIENTS,
+                    MAX_INCOMING_SLAVES,
                     InetAddress.getByName("0.0.0.0")
             );
         } catch (IOException e) {
@@ -57,7 +61,7 @@ public class Master implements Runnable {
         while (!this.serverSocket.isClosed()) {
             Socket slave = this.serverSocket.accept();
             System.out.println("Connection from " + slave + " established.");
-            ConnectionHandler handler = new ConnectionHandler(slave, networkConfig, primes);
+            ConnectionHandler handler = new ConnectionHandler(slave, networkConfig);
             Thread thread = new Thread(handler);
             thread.start();
             this.concurrentConnections.add(handler);
@@ -65,25 +69,15 @@ public class Master implements Runnable {
         this.concurrentConnections.stream().map(ConnectionHandler::stop);
     }
 
-    private List<Integer> getIndicesToDo() {
-        List<Integer> indices = new ArrayList<>();
-        int lastListIndex = this.primes.size() - 1;
-        for(int i = 0; i <= lastListIndex; i += this.SLICE_SIZE) {
-            indices.add(i);
-        }
-        return indices;
-    }
-
-    private synchronized void markAsSolved(Solution s) {
+    private synchronized void markAsSolved(SolutionPayload s) {
         this.solution = s;
         this.concurrentConnections.stream().map(ConnectionHandler::stop);
     }
 
-    private synchronized TaskPayload getNextTaskPayload() {
-        int newStartIndex = this.startIndicesToDo.get(0);
+    private synchronized TaskPayload getNextTaskPayload() throws NoSuchElementException {
+        int newStartIndex = this.startIndicesToDo.remove();
         // transfer index from ToDo to InProgress
         this.startIndicesInProgress.add(newStartIndex);
-        this.startIndicesToDo.remove(Integer.valueOf(newStartIndex));
         return new TaskPayload(newStartIndex, this.SLICE_SIZE);
     }
 
@@ -98,14 +92,12 @@ public class Master implements Runnable {
         private boolean running = true;
 
         private final NetworkConfiguration networkConfig;
-        private final List<Integer> primes;
 
-        private int currentIndex;
+        private int startIndex;
 
-        public ConnectionHandler(Socket slave, NetworkConfiguration networkConfig, List<Integer> primes) {
+        public ConnectionHandler(Socket slave, NetworkConfiguration networkConfig) {
             this.slave = slave;
             this.networkConfig = networkConfig;
-            this.primes = primes;
         }
 
         @Override
@@ -130,21 +122,21 @@ public class Master implements Runnable {
             }
         }
 
-        public int getCurrentIndex() {
-            return this.currentIndex;
+        public int getStartIndex() {
+            return this.startIndex;
         }
 
         private MultiMessage handleMessage(Message m) {
             return switch (m.getType()) {
-                case SLAVE_JOIN -> this.handleClientJoin(m);
-                case SLAVE_FINISHED_WORK -> this.handleClientFinishedWork(m);
+                case SLAVE_JOIN -> this.handleSlaveJoin(m);
+                case SLAVE_FINISHED_WORK -> this.handleSlaveFinishedWork(m);
                 case SLAVE_SOLUTION_FOUND -> this.handleSolutionFound(m);
                 default -> MultiMessage.NONE;
             };
         }
 
-        private MultiMessage handleClientJoin(Message m) {
-            JoinPayload payload = (JoinPayload) m.getPayload();
+        private MultiMessage handleSlaveJoin(Message m) {
+            // JoinPayload payload = (JoinPayload) m.getPayload();
             MultiMessage response = new MultiMessage();
 
             // Add slave IP-Address to network Information
@@ -158,23 +150,23 @@ public class Master implements Runnable {
 
             // create payload for next tasks
             TaskPayload taskPayload = getNextTaskPayload();
-            this.currentIndex = taskPayload.getStartIndex();
+            this.startIndex = taskPayload.getStartIndex();
             Message taskMessage = new Message(MessageType.DO_WORK, taskPayload);
             response.addMessage(taskMessage);
 
             return response;
         }
 
-        private MultiMessage handleClientFinishedWork(Message m) {
+        private MultiMessage handleSlaveFinishedWork(Message m) {
             // except TaskPayload
             MultiMessage response = new MultiMessage();
 
             // remove done index from list
-            markIndexAsDone(this.currentIndex);
+            markIndexAsDone(this.startIndex);
 
             // create new Task for slave
             TaskPayload taskPayload = getNextTaskPayload();
-            this.currentIndex = taskPayload.getStartIndex();
+            this.startIndex = taskPayload.getStartIndex();
             Message taskMessage = new Message(MessageType.DO_WORK, taskPayload);
             response.addMessage(taskMessage);
 
@@ -183,11 +175,11 @@ public class Master implements Runnable {
 
         private MultiMessage handleSolutionFound(Message m) {
             // Key found - other slaves can stop working
-            ResultPayload resultPayload = (ResultPayload) m.getPayload();
-            int prime1 = resultPayload.getPrime1();
-            int prime2 = resultPayload.getPrime2();
+            SolutionPayload resultPayload = (SolutionPayload) m.getPayload();
+            BigInteger prime1 = resultPayload.getPrime1();
+            BigInteger prime2 = resultPayload.getPrime2();
 
-            Solution solution = new Solution(prime1, prime2);
+            SolutionPayload solution = new SolutionPayload(prime1, prime2);
             markAsSolved(solution);
 
             return new MultiMessage();

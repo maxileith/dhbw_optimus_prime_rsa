@@ -1,14 +1,19 @@
 package optimus.prime.rsa.main;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
+import java.math.BigInteger;
+import java.net.InetAddress;
+import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
+    public final static String PUB_RSA_KEY = "";
+    public final static int MASTER_SLICE_SIZE = 100;
+    public final static int SLAVE_SLICE_SIZE = 10;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         /*
         --master=192.169.2.40
         --file_with_primes=<file-path>
@@ -34,8 +39,6 @@ public class Main {
             return;
         }*/
 
-        /*
-
         NetworkConfiguration networkConfig;
         try {
             InetAddress masterAddress = InetAddress.getByName("10.10.10.10");
@@ -49,22 +52,26 @@ public class Main {
 
 
         new Master(networkConfig);
-        */
-
-        System.out.println(getPrimes());
     }
 
-    private static List<Integer> getPrimes() throws IOException {
-        List<Integer> primes = new ArrayList<>();
-        try (BufferedReader br = new BufferedReader(new FileReader("ressources/primes100000.txt"))){
-            while(true) {
-                Integer value = Integer.parseInt(br.readLine());
+    public static List<BigInteger> getPrimes() throws IOException {
+        List<BigInteger> primes = new ArrayList<>();
+
+        final String fileName = "primes100.txt";
+        final InputStream stream = Main.class.getClassLoader().getResourceAsStream(fileName);
+
+        if (stream == null) {
+            return primes;
+        }
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(stream))){
+            String line;
+            while((line = br.readLine()) != null) {
+                BigInteger value = new BigInteger(line);
                 primes.add(value);
             }
         } catch (IOException e) {
             System.out.println("An error occured. " + e);
-        } catch (NumberFormatException e) {
-            System.out.println("Finished reading primes.");
         }
 
         return primes;
