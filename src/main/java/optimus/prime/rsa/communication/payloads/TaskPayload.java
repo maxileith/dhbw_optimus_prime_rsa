@@ -18,4 +18,8 @@ public class TaskPayload implements Serializable {
     public int getSliceSize() {
         return this.sliceSize;
     }
+
+    public String toString() {
+        return "Start-Index: " + this.startIndex + ", Slice-Size: " + this.sliceSize;
+    }
 }

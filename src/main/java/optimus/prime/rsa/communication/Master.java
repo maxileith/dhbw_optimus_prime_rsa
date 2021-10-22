@@ -41,7 +41,7 @@ public class Master implements Runnable {
             this.serverSocket = new ServerSocket(
                     NetworkConfiguration.PORT,
                     MAX_INCOMING_SLAVES,
-                    InetAddress.getByName("0.0.0.0")
+                    this.networkConfig.getMasterAddress()
             );
             System.out.println("Master - Socket opened " + this.serverSocket);
         } catch (IOException e) {

@@ -39,12 +39,14 @@ public class Slave implements Runnable {
                     networkConfig.getMasterAddress(),
                     NetworkConfiguration.PORT
             );
+            System.out.println("Slave  - established connection to master");
 
             InputStream inputStream = this.socket.getInputStream();
             ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
             this.receiver = new Receiver(objectInputStream);
             this.receiveThread = new Thread(this.receiver);
             this.receiveThread.start();
+            System.out.println("Slave  - started receiveThread");
         } catch(IOException e) {
             System.err.println("Slave  - The master is probably not reachable. " + e);
             this.running = false;
@@ -77,7 +79,7 @@ public class Slave implements Runnable {
                 }
 
                 int workers = this.sliceQueue.size();
-
+                System.out.println("Slave  - new sliceQueue needs " + workers + " workers");
                 // do the math
                 while (!this.sliceQueue.isEmpty()) {
                     cs.submit(new Worker(
@@ -94,12 +96,14 @@ public class Slave implements Runnable {
                         Future<SolutionPayload> f = cs.take();
                         SolutionPayload s = f.get();
                         resultsReceived++;
+                        System.out.println("Slave  - received new result from a worker");
                         // Solution found
                         if(!s.equals(SolutionPayload.NO_SOLUTION)){
                             Message m = new Message(MessageType.SLAVE_SOLUTION_FOUND, s);
                             objectOutputStream.writeObject(m);
                             objectOutputStream.flush();
                             this.running = false;
+                            System.out.println("Slave  - worker found a solution! " + s.toString());
                         }
                     } catch(ExecutionException e) { // FIXME: macht das sinn?
                         this.running = false;
@@ -118,7 +122,7 @@ public class Slave implements Runnable {
 
             // TODO: Sender
         } catch(IOException | InterruptedException e) {
-            System.out.println("An error occurred." + e);
+            System.err.println("Slave  - An error occurred." + e);
         }
     }
 
@@ -150,8 +154,7 @@ public class Slave implements Runnable {
                     this.handleMessages(messages);
                 }
             } catch (IOException | ClassNotFoundException e) {
-                System.out.println("An error occurred." + e);
-                e.printStackTrace();
+                System.out.println("Slave  - Receiver - failed to read incoming object - " + e);
             }
         }
 
@@ -169,18 +172,20 @@ public class Slave implements Runnable {
         private void handleHostList(Message m) {
             HostsPayload hostsPayload = (HostsPayload) m.getPayload();
             networkConfig.setHosts(hostsPayload.getHosts());
+            System.out.println("Slave  - Receiver - Received new host list");
         }
 
         private void handleNewWork(Message m) {
             TaskPayload taskPayload = (TaskPayload) m.getPayload();
             setTaskDetails(taskPayload);
+            System.out.println("Slave  - Receiver - Received new working package");
         }
 
         public void stop() {
             try {
                 this.objectInputStream.close();
             } catch (IOException e) {
-                System.out.println("An error occured. " + e);
+                System.err.println("Slave  - Receiver - Failed to stop receiver - " + e);
             }
             this.running = false;
             stopSlave();
