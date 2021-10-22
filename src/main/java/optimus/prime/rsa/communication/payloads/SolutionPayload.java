@@ -21,4 +21,8 @@ public class SolutionPayload implements Serializable {
     public BigInteger getPrime2() {
         return prime2;
     }
+
+    public String toString() {
+        return "Prime1: " + this.prime1 + "; Prime2: " + this.prime2;
+    }
 }

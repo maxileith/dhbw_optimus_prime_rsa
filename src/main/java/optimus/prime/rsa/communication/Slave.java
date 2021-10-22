@@ -46,18 +46,28 @@ public class Slave implements Runnable {
             this.receiveThread = new Thread(this.receiver);
             this.receiveThread.start();
         } catch(IOException e) {
-            System.out.println("An error occurred. " + e);
+            System.err.println("Slave  - The master is probably not reachable. " + e);
+            this.running = false;
         }
     }
 
     @Override
     public void run() {
+        if (!this.running) {
+            return;
+        }
         try  (
             OutputStream outputStream = this.socket.getOutputStream();
             ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream)
         ) {
             ExecutorService es = Executors.newFixedThreadPool(10); //FIXME: change dynamic
             CompletionService<SolutionPayload> cs = new ExecutorCompletionService<>(es);
+
+            System.out.println("Slave  - Sending hello message to master" );
+
+            Message initM = new Message(MessageType.SLAVE_JOIN);
+            objectOutputStream.writeObject(initM);
+            objectOutputStream.flush();
 
             while(this.running) {
 
@@ -79,7 +89,7 @@ public class Slave implements Runnable {
 
                 // collect the results
                 int resultsReceived = 0;
-                while(resultsReceived < workers) {
+                while(resultsReceived < workers && this.running) {
                     try {
                         Future<SolutionPayload> f = cs.take();
                         SolutionPayload s = f.get();
@@ -96,9 +106,14 @@ public class Slave implements Runnable {
                     }
                 }
 
-                Message m = new Message(MessageType.SLAVE_FINISHED_WORK);
-                objectOutputStream.writeObject(m);
-                objectOutputStream.flush();
+                if (this.running) {
+                    Message m = new Message(MessageType.SLAVE_FINISHED_WORK);
+                    objectOutputStream.writeObject(m);
+                    objectOutputStream.flush();
+                    System.out.println("Slave  - finished work");
+                } else {
+                    System.out.println("Salve  - stopped on purpose");
+                }
             }
 
             // TODO: Sender
@@ -112,6 +127,10 @@ public class Slave implements Runnable {
         this.sliceSize = taskPayload.getSliceSize();
 
         this.sliceQueue = Utils.getIndicesToDo(sliceSize, Main.SLAVE_SLICE_SIZE);
+    }
+
+    private void stopSlave() {
+        this.running = false;
     }
 
     private class Receiver implements Runnable {
@@ -130,7 +149,6 @@ public class Slave implements Runnable {
                     MultiMessage messages = (MultiMessage) this.objectInputStream.readObject();
                     this.handleMessages(messages);
                 }
-                this.objectInputStream.close();
             } catch (IOException | ClassNotFoundException e) {
                 System.out.println("An error occurred." + e);
                 e.printStackTrace();
@@ -142,6 +160,7 @@ public class Slave implements Runnable {
                 switch(m.getType()) {
                     case MASTER_HOSTS_LIST -> this.handleHostList(m);
                     case DO_WORK -> this.handleNewWork(m);
+                    case MASTER_EXIT -> this.stop();
                     default -> System.out.println("I do not know what to do");
                 };
             }
@@ -164,6 +183,7 @@ public class Slave implements Runnable {
                 System.out.println("An error occured. " + e);
             }
             this.running = false;
+            stopSlave();
         }
     }
 }

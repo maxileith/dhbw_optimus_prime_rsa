@@ -9,7 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
-    public final static String PUB_RSA_KEY = "";
+    public final static String PUB_RSA_KEY = "268342277565109549360836262560222031507";
+    public final static String CHIFFRE = "2d80afa14a65a7bf26636f97c89b43d5";
     public final static int MASTER_SLICE_SIZE = 100;
     public final static int SLAVE_SLICE_SIZE = 10;
 
@@ -39,16 +40,52 @@ public class Main {
             return;
         }*/
 
-        NetworkConfiguration networkConfig;
-        try {
-            InetAddress masterAddress = InetAddress.getByName("10.10.10.10");
-            networkConfig = new NetworkConfiguration(masterAddress);
-        } catch (UnknownHostException e) {
-            System.out.println("An error occured. " + e);
+        InetAddress masterAddress = null;
+        boolean isSlave = false;
+        // FIXME: Add path to prime list
+        // -m 10.10.10.10 -s
+
+        for (int i = 0; i < args.length; i++) {
+            switch (args[i]) {
+                case "-m":
+                    i++;
+                    if(i >= args.length) {
+                        System.err.println("Not enough arguments supplied! Please supply a master-address");
+                        return;
+                    }
+                    try {
+                        masterAddress = InetAddress.getByName(args[i]);
+                    } catch (UnknownHostException e) {
+                        System.err.println("An error occurred. " + e);
+                        return;
+                    }
+                    break;
+                case "-s":
+                    isSlave = true;
+                    break;
+                default:
+                    System.err.println("Unknown argument " + args[i]);
+                    return;
+            }
+        }
+
+        // Make sure that masterAddress is set
+        if (masterAddress == null) {
+            System.err.println("Master-Address is required.");
             return;
         }
 
-        final List<Integer> primes = this.getPrimes();
+        // load primes
+        final List<BigInteger> primes = getPrimes();
+
+        NetworkConfiguration networkConfig = new NetworkConfiguration(masterAddress);
+
+        // Start master if not slave
+        Thread masterThread = null;
+        if (!isSlave) {
+            Master master = new Master(networkConfig, primes);
+            masterThread = new Thread(master);
+            masterThread.start();
 
 
         new Master(networkConfig);

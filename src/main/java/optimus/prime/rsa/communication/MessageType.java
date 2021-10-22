@@ -13,6 +13,7 @@ public enum MessageType {
     MASTER_PRIMES_LIST,
     SLAVE_SOLUTION_FOUND,
     DO_WORK,
+    MASTER_EXIT,
     CONNECTION_LOST,
     DISCONNECT
 }
