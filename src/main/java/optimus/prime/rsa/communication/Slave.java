@@ -72,7 +72,7 @@ public class Slave implements Runnable {
             while(this.running) {
 
                 // wait for the slice queue to get filled
-                while (this.sliceQueue.isEmpty()) {
+                while (this.sliceQueue == null || this.sliceQueue.isEmpty()) {
                     Thread.sleep(5);
                 }
 

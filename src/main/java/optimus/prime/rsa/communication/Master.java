@@ -5,10 +5,7 @@ import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Queue;
+import java.util.*;
 
 import optimus.prime.rsa.communication.payloads.HostsPayload;
 import optimus.prime.rsa.communication.payloads.SolutionPayload;
@@ -38,6 +35,7 @@ public class Master implements Runnable {
         this.primes = primes;
 
         this.startIndicesToDo = Utils.getIndicesToDo(this.primes.size(), this.SLICE_SIZE);
+        this.startIndicesInProgress = new LinkedList<>();
 
         try {
             this.serverSocket = new ServerSocket(
@@ -113,10 +111,10 @@ public class Master implements Runnable {
         public void run() {
             System.out.println("Master - ConnectionHandler - " + this.slave + " - Starting ConnectionHandler");
             try (
+                    OutputStream outputStream = this.slave.getOutputStream();
+                    ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
                     InputStream inputStream = this.slave.getInputStream();
                     ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
-                    OutputStream outputStream = this.slave.getOutputStream();
-                    ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream)
             ) {
                 while (this.running) {
                     System.out.println("Master - ConnectionHandler - " + this.slave + " - waiting for message to be received ...");
@@ -200,7 +198,14 @@ public class Master implements Runnable {
             SolutionPayload solution = new SolutionPayload(prime1, prime2);
             markAsSolved(solution);
 
-            return new MultiMessage();
+            RSAHelper helper = new RSAHelper();
+            System.out.println("Master - Decrypted text is \"" + helper.decrypt(solution.getPrime1().toString(), solution.getPrime2().toString(), Main.CHIFFRE) + "\"");
+
+            // TODO: MASTER_EXIT an alle senden
+            MultiMessage response = new MultiMessage();
+            response.addMessage(new Message(MessageType.MASTER_EXIT));
+
+            return response;
         }
 
         public synchronized boolean stop() {

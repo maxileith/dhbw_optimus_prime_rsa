@@ -111,6 +111,7 @@ public class RSAHelper
                 RSAStatics.CERTAINTY)
         );
 
+
         try
         {
             AsymmetricCipherKeyPair keyPair =generator.generateKeyPair(p,q);
@@ -123,6 +124,7 @@ public class RSAHelper
         }
         catch (Exception e)
         {
+            //e.printStackTrace();
             //System.err.println("ERROR: "+e.toString()); // this method floods the console, we don't need it here
             return false;
         }

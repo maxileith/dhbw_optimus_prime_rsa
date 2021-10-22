@@ -1,5 +1,8 @@
 package optimus.prime.rsa.main;
 
+import optimus.prime.rsa.communication.Master;
+import optimus.prime.rsa.communication.Slave;
+
 import java.io.*;
 import java.math.BigInteger;
 import java.net.InetAddress;
@@ -87,8 +90,23 @@ public class Main {
             masterThread = new Thread(master);
             masterThread.start();
 
+            System.out.println("To join a slave use -m " + networkConfig.getMasterAddress());
+        }
 
-        new Master(networkConfig);
+        Slave slave = new Slave(networkConfig, primes);
+        Thread slaveThread = new Thread(slave);
+        slaveThread.start();
+
+        try {
+            slaveThread.join();
+            System.out.println("Slave-Thread terminated");
+            if (masterThread != null) {
+                masterThread.join();
+                System.out.println("Master-Thread terminated");
+            }
+        } catch (InterruptedException e) {
+            System.err.println("Main   - failed to join threads - " + e);
+        }
     }
 
     public static List<BigInteger> getPrimes() throws IOException {
