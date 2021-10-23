@@ -29,9 +29,8 @@ public class Worker implements Callable<SolutionPayload> {
         System.out.printf((LOG_START_INSPECTING) + "%n", this.slice);
         for (int a = slice.getStart(); a <= slice.getEnd(); a++) {
             // Sollte später auf die reine Big Integer Variante gewechselt werden
-            for (BigInteger prime : primes) {
+            for (BigInteger bInt : primes) {
                 BigInteger aInt = primes.get(a);
-                BigInteger bInt = prime;
                 if (rsaHelper.isValid(aInt.toString(), bInt.toString(), Main.PUB_RSA_KEY)) { // TODO: Verify whether correct positioning
                     System.out.printf((LOG_MESSAGE_SOLUTION_FOUND) + "%n", this.slice, aInt, bInt);
                     return new SolutionPayload(aInt, bInt);
