@@ -114,11 +114,8 @@ public class Slave implements Runnable {
             System.out.println("Slave  - stopped");
             es.shutdown();
 
-            // wait until SLAVE_EXIT_ACKNOWLEDGE is being received
-            // by Receiver and the stop() method is executed
-            //while (!this.socket.isClosed()) {
-            //    Thread.sleep(5);
-            //}
+            // wait for the receiver to terminate gracefully
+            this.receiveThread.join();
 
             System.out.println("Slave  - Thread terminated");
 
@@ -142,6 +139,9 @@ public class Slave implements Runnable {
         } catch (IOException e) {
             System.err.println("Slave  - failed to send SLAVE_EXIT_ACKNOWLEDGE");
         }
+        // do not wait for the receiver thread to be terminated here,
+        // because this method gets called by the receiver. so if joining
+        // here the receiver is stuck waiting for itself.
         this.running = false;
     }
 
@@ -168,6 +168,7 @@ public class Slave implements Runnable {
                     System.out.println("Slave  - Receiver - stopped on purpose");
                 }
             }
+            System.out.println("Slave  - Receiver - terminated");
         }
 
         private void handleMessages(MultiMessage messages) {

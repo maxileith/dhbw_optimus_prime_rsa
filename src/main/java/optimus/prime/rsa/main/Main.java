@@ -3,12 +3,9 @@ package optimus.prime.rsa.main;
 import optimus.prime.rsa.communication.Master;
 import optimus.prime.rsa.communication.Slave;
 
-import java.io.*;
 import java.math.BigInteger;
 import java.net.InetAddress;
-import java.net.URL;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
@@ -33,14 +30,6 @@ public class Main {
             - Bearbeitet die Arbeitspakete
             - Ergebnis wird an Communicatin Thread gegeben, der die Nachricht an den Master sendet
         */
-
-        /*try {
-            String adr = Inet4Address.getLocalHost().getHostAddress();
-            InetAddress ownAddress = InetAddress.getByName(adr);
-        } catch (UnknownHostException e) {
-            System.out.println("An error occured. " + e);
-            return;
-        }*/
 
         InetAddress masterAddress = null;
         boolean isSlave = false;

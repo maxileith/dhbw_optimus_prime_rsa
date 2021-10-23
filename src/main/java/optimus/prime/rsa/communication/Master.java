@@ -171,7 +171,7 @@ public class Master implements Runnable {
             System.out.println("Master - ConnectionHandler - " + this.slave + " - Received message");
             return switch (m.getType()) {
                 case SLAVE_JOIN -> this.handleSlaveJoin(m);
-                case SLAVE_FINISHED_WORK -> this.handleSlaveFinishedWork(m);
+                case SLAVE_FINISHED_WORK -> this.handleSlaveFinishedWork();
                 case SLAVE_SOLUTION_FOUND -> this.handleSolutionFound(m);
                 case SLAVE_EXIT_ACKNOWLEDGE -> this.handleExitAcknowledge();
                 default -> MultiMessage.NONE;
@@ -203,7 +203,7 @@ public class Master implements Runnable {
             return response;
         }
 
-        private MultiMessage handleSlaveFinishedWork(Message m) {
+        private MultiMessage handleSlaveFinishedWork() {
             System.out.println("Master - ConnectionHandler - " + this.slave + " - Slave finished Work");
             // except TaskPayload
             MultiMessage response = new MultiMessage();
