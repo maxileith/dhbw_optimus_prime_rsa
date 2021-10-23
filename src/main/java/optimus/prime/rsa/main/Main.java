@@ -17,7 +17,7 @@ public class Main {
     public final static int MASTER_SLICE_SIZE = 100;
     public final static int SLAVE_SLICE_SIZE = 10;
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         /*
         --master=192.169.2.40
         --file_with_primes=<file-path>
@@ -50,9 +50,9 @@ public class Main {
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
-                case "-m":
+                case "-m" -> {
                     i++;
-                    if(i >= args.length) {
+                    if (i >= args.length) {
                         System.err.println("Not enough arguments supplied! Please supply a master-address");
                         return;
                     }
@@ -62,13 +62,12 @@ public class Main {
                         System.err.println("An error occurred. " + e);
                         return;
                     }
-                    break;
-                case "-s":
-                    isSlave = true;
-                    break;
-                default:
+                }
+                case "-s" -> isSlave = true;
+                default -> {
                     System.err.println("Unknown argument " + args[i]);
                     return;
+                }
             }
         }
 
@@ -79,7 +78,7 @@ public class Main {
         }
 
         // load primes
-        final List<BigInteger> primes = getPrimes();
+        final List<BigInteger> primes = Utils.getPrimes();
 
         NetworkConfiguration networkConfig = new NetworkConfiguration(masterAddress);
 
@@ -99,36 +98,13 @@ public class Main {
 
         try {
             slaveThread.join();
-            System.out.println("Slave-Thread terminated");
             if (masterThread != null) {
                 masterThread.join();
-                System.out.println("Master-Thread terminated");
             }
         } catch (InterruptedException e) {
             System.err.println("Main   - failed to join threads - " + e);
         }
-    }
 
-    public static List<BigInteger> getPrimes() throws IOException {
-        List<BigInteger> primes = new ArrayList<>();
-
-        final String fileName = "primes100.txt";
-        final InputStream stream = Main.class.getClassLoader().getResourceAsStream(fileName);
-
-        if (stream == null) {
-            return primes;
-        }
-
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(stream))){
-            String line;
-            while((line = br.readLine()) != null) {
-                BigInteger value = new BigInteger(line);
-                primes.add(value);
-            }
-        } catch (IOException e) {
-            System.out.println("An error occured. " + e);
-        }
-
-        return primes;
+        System.out.println("Bye :)");
     }
 }

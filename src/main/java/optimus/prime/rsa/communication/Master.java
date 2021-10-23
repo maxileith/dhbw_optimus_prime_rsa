@@ -5,6 +5,7 @@ import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.*;
 
 import optimus.prime.rsa.communication.payloads.HostsPayload;
@@ -18,7 +19,7 @@ import optimus.prime.rsa.main.Utils;
 public class Master implements Runnable {
 
     private ServerSocket serverSocket;
-    private final List<ConnectionHandler> concurrentConnections = new ArrayList<>();
+    private final List<Thread> connectionHandlerThreads = new ArrayList<>();
     private static final int MAX_INCOMING_SLAVES = 1000;
 
     private final NetworkConfiguration networkConfig;
@@ -26,16 +27,15 @@ public class Master implements Runnable {
 
     private final int SLICE_SIZE = Main.MASTER_SLICE_SIZE;
     private final Queue<Integer> startIndicesToDo;
-    private List<Integer> startIndicesInProgress;
+    private final List<Integer> startIndicesInProgress = new LinkedList<>();
 
-    private SolutionPayload solution; // FIXME: noch iwas machen damit
+    private SolutionPayload solution = null;
 
     public Master(NetworkConfiguration networkConfig, List<BigInteger> primes) {
         this.networkConfig = networkConfig;
         this.primes = primes;
 
         this.startIndicesToDo = Utils.getIndicesToDo(this.primes.size(), this.SLICE_SIZE);
-        this.startIndicesInProgress = new LinkedList<>();
 
         try {
             this.serverSocket = new ServerSocket(
@@ -43,6 +43,7 @@ public class Master implements Runnable {
                     MAX_INCOMING_SLAVES,
                     this.networkConfig.getMasterAddress()
             );
+            this.serverSocket.setSoTimeout(1000);
             System.out.println("Master - Socket opened " + this.serverSocket);
         } catch (IOException e) {
             System.err.println("Master - failed while creating the serverSocket - " + e);
@@ -58,25 +59,36 @@ public class Master implements Runnable {
         } catch (IOException e) {
             System.err.println("Master - exception while distributing the connections - " + e);
         }
+        this.stop();
+
+        if (this.solution != null) {
+            RSAHelper helper = new RSAHelper();
+            System.out.println("Master - Decrypted text is \"" + helper.decrypt(this.solution.getPrime1().toString(), this.solution.getPrime2().toString(), Main.CHIFFRE) + "\"");
+        } else {
+            System.out.println("Master - The solution cannot be found in the given prime numbers.");
+        }
+
+        System.out.println("Master - Thread terminated");
     }
 
     private void distributeConnections() throws IOException {
-        while (!this.serverSocket.isClosed()) {
-            Socket slave = this.serverSocket.accept();
-            System.out.println("Master - Connection from " + slave + " established.");
-            ConnectionHandler handler = new ConnectionHandler(slave, networkConfig);
-            Thread thread = new Thread(handler);
-            thread.start();
-            this.concurrentConnections.add(handler);
+        while (!this.serverSocket.isClosed() && this.solution == null && (!this.startIndicesToDo.isEmpty() || !this.startIndicesInProgress.isEmpty())) {
+            try {
+                Socket slave = this.serverSocket.accept();
+                System.out.println("Master - Connection from " + slave + " established.");
+                ConnectionHandler handler = new ConnectionHandler(slave, networkConfig);
+                Thread thread = new Thread(handler);
+                thread.start();
+                this.connectionHandlerThreads.add(thread);
+            } catch (SocketTimeoutException ignored) {
+            }
         }
         System.out.println("Master - Stopping ConnectionHandlers due to closed serverSocket");
-        this.concurrentConnections.stream().map(ConnectionHandler::stop);
     }
 
     private synchronized void markAsSolved(SolutionPayload s) {
         this.solution = s;
         System.out.println("Master - Solution found: " + s);
-        this.concurrentConnections.stream().map(ConnectionHandler::stop);
     }
 
     private synchronized TaskPayload getNextTaskPayload() throws NoSuchElementException {
@@ -91,6 +103,22 @@ public class Master implements Runnable {
         this.startIndicesInProgress.remove(Integer.valueOf(index));
     }
 
+    private void stop() {
+        System.out.println("Master - waiting for ConnectionHandlers to terminate ...");
+        this.connectionHandlerThreads.forEach(t -> {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                System.err.println("Master - error while waiting for the ConnectionHandlers to terminate - " + e);
+            }
+        });
+
+        try {
+            this.serverSocket.close();
+        } catch (IOException e) {
+            System.err.println("Master - Failed to close the serverSocket - " + e);
+        }
+    }
 
     private class ConnectionHandler implements Runnable {
 
@@ -114,23 +142,30 @@ public class Master implements Runnable {
                     OutputStream outputStream = this.slave.getOutputStream();
                     ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
                     InputStream inputStream = this.slave.getInputStream();
-                    ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
+                    ObjectInputStream objectInputStream = new ObjectInputStream(inputStream)
             ) {
                 while (this.running) {
                     System.out.println("Master - ConnectionHandler - " + this.slave + " - waiting for message to be received ...");
                     Message message = (Message) objectInputStream.readObject();
                     final MultiMessage response = this.handleMessage(message);
 
-                    objectOutputStream.writeObject(response);
-                    objectOutputStream.flush();
+                    if (response != null) {
+                        objectOutputStream.writeObject(response);
+                        objectOutputStream.flush();
+                    }
                 }
-            } catch (IOException | ClassNotFoundException e) {
-                System.err.println("Master - ConnectionHandler - " + this.slave + " - Object Input stream closed " + e);
+            } catch (IOException e) {
+                if (this.running) {
+                    System.err.println("Master - ConnectionHandler - " + this.slave + " - Object Input stream closed " + e);
+                    // FIXME: Slave died
+                } else {
+                    System.out.println("Master - ConnectionHandler - " + this.slave + " - Slave disconnected because solution was found.");
+                }
+            } catch (ClassNotFoundException e) {
+                System.err.println("Master - ConnectionHandler - Class of incoming object unknown - " + e);
             }
-        }
 
-        public int getStartIndex() {
-            return this.startIndex;
+            System.out.println("Master - ConnectionHandler - Terminated");
         }
 
         private MultiMessage handleMessage(Message m) {
@@ -139,6 +174,7 @@ public class Master implements Runnable {
                 case SLAVE_JOIN -> this.handleSlaveJoin(m);
                 case SLAVE_FINISHED_WORK -> this.handleSlaveFinishedWork(m);
                 case SLAVE_SOLUTION_FOUND -> this.handleSolutionFound(m);
+                case SLAVE_EXIT_ACKNOWLEDGE -> this.handleExitAcknowledge();
                 default -> MultiMessage.NONE;
             };
         }
@@ -160,7 +196,7 @@ public class Master implements Runnable {
             // create payload for next tasks
             TaskPayload taskPayload = getNextTaskPayload();
             this.startIndex = taskPayload.getStartIndex();
-            Message taskMessage = new Message(MessageType.DO_WORK, taskPayload);
+            Message taskMessage = new Message(MessageType.MASTER_DO_WORK, taskPayload);
             response.addMessage(taskMessage);
             System.out.println("Master - ConnectionHandler - " + this.slave + " - Sending new work to Slave: " + taskPayload);
 
@@ -175,14 +211,21 @@ public class Master implements Runnable {
             MultiMessage response = new MultiMessage();
 
             // remove done index from list
+            // TODO: Es wird noch nicht gehandelt, dass der start_index in die Queue aufgenommen wird, sofern der Slave disconnected
             markIndexAsDone(this.startIndex);
 
             // create new Task for slave
-            TaskPayload taskPayload = getNextTaskPayload();
-            this.startIndex = taskPayload.getStartIndex();
-            Message taskMessage = new Message(MessageType.DO_WORK, taskPayload);
-            response.addMessage(taskMessage);
-            System.out.println("Master - ConnectionHandler - " + this.slave + " - Sending new work to Slave: " + taskPayload);
+            try {
+                TaskPayload taskPayload = getNextTaskPayload();
+                this.startIndex = taskPayload.getStartIndex();
+                System.out.println("Master - ConnectionHandler - " + this.slave + " - Sending new work to Slave: " + taskPayload);
+                Message taskMessage = new Message(MessageType.MASTER_DO_WORK, taskPayload);
+                response.addMessage(taskMessage);
+            } catch (NoSuchElementException ignored) {
+                System.out.println("Master - ConnectionHandler - " + this.slave + " - No more work to do -> sending MASTER_EXIT to Slave");
+                Message exitMessage = new Message(MessageType.MASTER_EXIT);
+                response.addMessage(exitMessage);
+            }
 
             return response;
         }
@@ -191,15 +234,8 @@ public class Master implements Runnable {
             System.out.println("Master - ConnectionHandler - " + this.slave + " - Found solution");
 
             // Key found - other slaves can stop working
-            SolutionPayload resultPayload = (SolutionPayload) m.getPayload();
-            BigInteger prime1 = resultPayload.getPrime1();
-            BigInteger prime2 = resultPayload.getPrime2();
-
-            SolutionPayload solution = new SolutionPayload(prime1, prime2);
+            SolutionPayload solution = (SolutionPayload) m.getPayload();
             markAsSolved(solution);
-
-            RSAHelper helper = new RSAHelper();
-            System.out.println("Master - Decrypted text is \"" + helper.decrypt(solution.getPrime1().toString(), solution.getPrime2().toString(), Main.CHIFFRE) + "\"");
 
             // TODO: MASTER_EXIT an alle senden
             MultiMessage response = new MultiMessage();
@@ -208,18 +244,14 @@ public class Master implements Runnable {
             return response;
         }
 
-        public synchronized boolean stop() {
-            System.out.println("Master - ConnectionHandler - " + this.slave + " - connection stopped");
-
-            boolean success = true;
+        private MultiMessage handleExitAcknowledge() {
+            System.out.println("Master - ConnectionHandler - " + this.slave + " - Slave acknowledged exit");
+            this.running = false;
             try {
                 this.slave.close();
-            } catch (IOException e) {
-                System.err.println("Master - ConnectionHandler - " + this.slave + " - error during closeing the connection to the slave " + e);
-                success = false;
+            } catch (IOException ignored) {
             }
-            this.running = false;
-            return success;
+            return null;
         }
     }
 

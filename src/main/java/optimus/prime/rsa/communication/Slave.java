@@ -43,11 +43,13 @@ public class Slave implements Runnable {
 
             InputStream inputStream = this.socket.getInputStream();
             ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
+            OutputStream outputStream = this.socket.getOutputStream();
+            this.objectOutputStream = new ObjectOutputStream(outputStream);
             this.receiver = new Receiver(objectInputStream);
             this.receiveThread = new Thread(this.receiver);
             this.receiveThread.start();
             System.out.println("Slave  - started receiveThread");
-        } catch(IOException e) {
+        } catch (IOException e) {
             System.err.println("Slave  - The master is probably not reachable. " + e);
             this.running = false;
         }
@@ -58,23 +60,20 @@ public class Slave implements Runnable {
         if (!this.running) {
             return;
         }
-        try  (
-            OutputStream outputStream = this.socket.getOutputStream();
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream)
-        ) {
+        try {
             ExecutorService es = Executors.newFixedThreadPool(10); //FIXME: change dynamic
             CompletionService<SolutionPayload> cs = new ExecutorCompletionService<>(es);
 
-            System.out.println("Slave  - Sending hello message to master" );
+            System.out.println("Slave  - Sending hello message to master");
 
             Message initM = new Message(MessageType.SLAVE_JOIN);
-            objectOutputStream.writeObject(initM);
-            objectOutputStream.flush();
+            this.objectOutputStream.writeObject(initM);
+            this.objectOutputStream.flush();
 
-            while(this.running) {
+            while (this.running) {
 
                 // wait for the slice queue to get filled
-                while (this.sliceQueue == null || this.sliceQueue.isEmpty()) {
+                while ((this.sliceQueue == null || this.sliceQueue.isEmpty()) && !this.socket.isClosed()) {
                     Thread.sleep(5);
                 }
 
@@ -90,38 +89,46 @@ public class Slave implements Runnable {
                 }
 
                 // collect the results
-                int resultsReceived = 0;
-                while(resultsReceived < workers && this.running) {
+                for (int resultsReceived = 0; resultsReceived < workers && this.running; resultsReceived++) {
                     try {
                         Future<SolutionPayload> f = cs.take();
                         SolutionPayload s = f.get();
-                        resultsReceived++;
                         System.out.println("Slave  - received new result from a worker");
                         // Solution found
-                        if(!s.equals(SolutionPayload.NO_SOLUTION)){
+                        if (!s.equals(SolutionPayload.NO_SOLUTION)) {
                             Message m = new Message(MessageType.SLAVE_SOLUTION_FOUND, s);
-                            objectOutputStream.writeObject(m);
-                            objectOutputStream.flush();
+                            this.objectOutputStream.writeObject(m);
+                            this.objectOutputStream.flush();
                             this.running = false;
-                            System.out.println("Slave  - worker found a solution! " + s.toString());
+                            System.out.println("Slave  - worker found a solution! " + s);
                         }
-                    } catch(ExecutionException e) { // FIXME: macht das sinn?
+                    } catch (ExecutionException e) { // FIXME: macht das sinn?
+                        System.err.println("Slave - Error in Worker: ");
+                        e.printStackTrace();
                         this.running = false;
                     }
                 }
 
                 if (this.running) {
                     Message m = new Message(MessageType.SLAVE_FINISHED_WORK);
-                    objectOutputStream.writeObject(m);
-                    objectOutputStream.flush();
+                    this.objectOutputStream.writeObject(m);
+                    this.objectOutputStream.flush();
                     System.out.println("Slave  - finished work");
-                } else {
-                    System.out.println("Salve  - stopped on purpose");
                 }
             }
+            System.out.println("Slave  - stopped");
+            es.shutdown();
+
+            // wait until SLAVE_EXIT_ACKNOWLEDGE is being received
+            // by Receiver and the stop() method is executed
+            //while (!this.socket.isClosed()) {
+            //    Thread.sleep(5);
+            //}
+
+            System.out.println("Slave  - Thread terminated");
 
             // TODO: Sender
-        } catch(IOException | InterruptedException e) {
+        } catch (IOException | InterruptedException e) {
             System.err.println("Slave  - An error occurred." + e);
         }
     }
@@ -134,6 +141,15 @@ public class Slave implements Runnable {
     }
 
     private void stopSlave() {
+        System.out.println("Slave  - sending SLAVE_EXIT_ACKNOWLEDGE");
+        Message m = new Message(MessageType.SLAVE_EXIT_ACKNOWLEDGE);
+        try {
+            this.objectOutputStream.writeObject(m);
+            this.objectOutputStream.flush();
+            this.socket.close();
+        } catch (IOException e) {
+            System.err.println("Slave  - failed to send SLAVE_EXIT_ACKNOWLEDGE");
+        }
         this.running = false;
     }
 
@@ -154,18 +170,23 @@ public class Slave implements Runnable {
                     this.handleMessages(messages);
                 }
             } catch (IOException | ClassNotFoundException e) {
-                System.out.println("Slave  - Receiver - failed to read incoming object - " + e);
+                if (this.running) {
+                    System.err.println("Slave  - Receiver - failed to read incoming object - " + e);
+                } else {
+                    System.out.println("Slave  - Receiver - stopped on purpose");
+                }
             }
         }
 
         private void handleMessages(MultiMessage messages) {
-            for (Message m: messages.getAllMessages()) {
-                switch(m.getType()) {
+            System.out.println("Master - ConnectionHandler - Received MultiMessage");
+            for (Message m : messages.getAllMessages()) {
+                switch (m.getType()) {
                     case MASTER_HOSTS_LIST -> this.handleHostList(m);
-                    case DO_WORK -> this.handleNewWork(m);
-                    case MASTER_EXIT -> this.stop();
+                    case MASTER_DO_WORK -> this.handleNewWork(m);
+                    case MASTER_EXIT -> this.stopReceiver();
                     default -> System.out.println("I do not know what to do");
-                };
+                }
             }
         }
 
@@ -181,12 +202,9 @@ public class Slave implements Runnable {
             System.out.println("Slave  - Receiver - Received new working package");
         }
 
-        public void stop() {
-            try {
-                this.objectInputStream.close();
-            } catch (IOException e) {
-                System.err.println("Slave  - Receiver - Failed to stop receiver - " + e);
-            }
+        public void stopReceiver() {
+            System.out.println("Slave  - Receiver - MASTER_EXIT");
+            System.out.println("Slave  - Receiver - stopping receiver");
             this.running = false;
             stopSlave();
         }
