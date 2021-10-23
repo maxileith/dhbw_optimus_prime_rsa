@@ -25,7 +25,7 @@ public class Utils {
     public static Queue<SlicePayload> getNSlices(int start, int end, int n) {
         Queue<SlicePayload> slices = new LinkedList<>();
         int stepSize = (end - start + 1) / n;
-        return getSlices(start, end, n);
+        return getSlices(start, end, stepSize);
     }
 
     public static List<BigInteger> getPrimes() {
