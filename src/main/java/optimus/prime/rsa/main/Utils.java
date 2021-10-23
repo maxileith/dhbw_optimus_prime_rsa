@@ -1,5 +1,7 @@
 package optimus.prime.rsa.main;
 
+import optimus.prime.rsa.communication.payloads.SlicePayload;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,13 +13,19 @@ import java.util.List;
 import java.util.Queue;
 
 public class Utils {
-    public static Queue<Integer> getIndicesToDo(int numberOfPrimes, int sliceSize) {
-        Queue<Integer> indices = new LinkedList<>();
-        int lastIndex = numberOfPrimes - 1;
-        for (int i = 0; i <= lastIndex; i += sliceSize) {
-            indices.add(i);
+    public static Queue<SlicePayload> getSlices(int start, int end, int stepSize) {
+        Queue<SlicePayload> slices = new LinkedList<>();
+        for (int i = start; i <= end; i += stepSize) {
+            int sliceEnd = Math.min(i + stepSize - 1, end);
+            SlicePayload slice = new SlicePayload(i, sliceEnd);
+            slices.add(slice);
         }
-        return indices;
+        return slices;
+    }
+    public static Queue<SlicePayload> getNSlices(int start, int end, int n) {
+        Queue<SlicePayload> slices = new LinkedList<>();
+        int stepSize = (end - start + 1) / n;
+        return getSlices(start, end, n);
     }
 
     public static List<BigInteger> getPrimes() {

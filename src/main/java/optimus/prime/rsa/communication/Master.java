@@ -9,8 +9,8 @@ import java.net.SocketTimeoutException;
 import java.util.*;
 
 import optimus.prime.rsa.communication.payloads.HostsPayload;
+import optimus.prime.rsa.communication.payloads.SlicePayload;
 import optimus.prime.rsa.communication.payloads.SolutionPayload;
-import optimus.prime.rsa.communication.payloads.TaskPayload;
 import optimus.prime.rsa.crypto.RSAHelper;
 import optimus.prime.rsa.main.Main;
 import optimus.prime.rsa.main.NetworkConfiguration;
@@ -25,9 +25,8 @@ public class Master implements Runnable {
     private final NetworkConfiguration networkConfig;
     private final List<BigInteger> primes;
 
-    private final int SLICE_SIZE = Main.MASTER_SLICE_SIZE;
-    private final Queue<Integer> startIndicesToDo;
-    private final List<Integer> startIndicesInProgress = new LinkedList<>();
+    private final Queue<SlicePayload> slicesToDo;
+    private final List<SlicePayload> slicesInProgress = new LinkedList<>();
 
     private SolutionPayload solution = null;
 
@@ -35,7 +34,10 @@ public class Master implements Runnable {
         this.networkConfig = networkConfig;
         this.primes = primes;
 
-        this.startIndicesToDo = Utils.getIndicesToDo(this.primes.size(), this.SLICE_SIZE);
+        System.out.println(this.primes.size() / Main.MASTER_SLICE_SIZE);
+
+        this.slicesToDo = Utils.getSlices(0, this.primes.size() - 1, Main.MASTER_SLICE_SIZE);
+        System.out.println(this.slicesToDo);
 
         try {
             this.serverSocket = new ServerSocket(
@@ -72,7 +74,7 @@ public class Master implements Runnable {
     }
 
     private void distributeConnections() throws IOException {
-        while (!this.serverSocket.isClosed() && this.solution == null && (!this.startIndicesToDo.isEmpty() || !this.startIndicesInProgress.isEmpty())) {
+        while (!this.serverSocket.isClosed() && this.solution == null && (!this.slicesToDo.isEmpty() || !this.slicesInProgress.isEmpty())) {
             try {
                 Socket slave = this.serverSocket.accept();
                 System.out.println("Master - Connection from " + slave + " established.");
@@ -91,16 +93,16 @@ public class Master implements Runnable {
         System.out.println("Master - Solution found: " + s);
     }
 
-    private synchronized TaskPayload getNextTaskPayload() throws NoSuchElementException {
-        int newStartIndex = this.startIndicesToDo.remove();
+    private synchronized SlicePayload getNextSlice() throws NoSuchElementException {
+        SlicePayload slice = this.slicesToDo.remove();
         // transfer index from ToDo to InProgress
-        this.startIndicesInProgress.add(newStartIndex);
-        return new TaskPayload(newStartIndex, this.SLICE_SIZE);
+        this.slicesInProgress.add(slice);
+        return slice;
     }
 
-    private synchronized void markIndexAsDone(int index) {
-        System.out.println("Master - Index " + index + " is done");
-        this.startIndicesInProgress.remove(Integer.valueOf(index));
+    private synchronized void markSliceAsDone(SlicePayload slice) {
+        System.out.println("Master - Slice " + slice + " is done");
+        this.slicesInProgress.remove(slice);
     }
 
     private void stop() {
@@ -127,7 +129,7 @@ public class Master implements Runnable {
 
         private final NetworkConfiguration networkConfig;
 
-        private int startIndex;
+        private SlicePayload currentSlice;
 
         public ConnectionHandler(Socket slave, NetworkConfiguration networkConfig) {
             System.out.println("Master - ConnectionHandler - " + slave + " - Initializing new ConnectionHandler.");
@@ -194,11 +196,10 @@ public class Master implements Runnable {
             response.addMessage(hostsMessage);
 
             // create payload for next tasks
-            TaskPayload taskPayload = getNextTaskPayload();
-            this.startIndex = taskPayload.getStartIndex();
-            Message taskMessage = new Message(MessageType.MASTER_DO_WORK, taskPayload);
-            response.addMessage(taskMessage);
-            System.out.println("Master - ConnectionHandler - " + this.slave + " - Sending new work to Slave: " + taskPayload);
+            this.currentSlice = getNextSlice();
+            Message sliceMessage = new Message(MessageType.MASTER_DO_WORK, this.currentSlice);
+            response.addMessage(sliceMessage);
+            System.out.println("Master - ConnectionHandler - " + this.slave + " - Sending new work to Slave: " + this.currentSlice);
 
             // TODO: send new host list to all slaves
 
@@ -210,19 +211,18 @@ public class Master implements Runnable {
             // except TaskPayload
             MultiMessage response = new MultiMessage();
 
-            // remove done index from list
+            // remove done slice from list
             // TODO: Es wird noch nicht gehandelt, dass der start_index in die Queue aufgenommen wird, sofern der Slave disconnected
-            markIndexAsDone(this.startIndex);
+            markSliceAsDone(this.currentSlice);
 
-            // create new Task for slave
+            // create new slice for slave
             try {
-                TaskPayload taskPayload = getNextTaskPayload();
-                this.startIndex = taskPayload.getStartIndex();
-                System.out.println("Master - ConnectionHandler - " + this.slave + " - Sending new work to Slave: " + taskPayload);
-                Message taskMessage = new Message(MessageType.MASTER_DO_WORK, taskPayload);
-                response.addMessage(taskMessage);
+                this.currentSlice = getNextSlice();
+                System.out.println("Master - ConnectionHandler - " + this.slave + " - Sending new slice to slave: " + this.currentSlice);
+                Message sliceMessage = new Message(MessageType.MASTER_DO_WORK, this.currentSlice);
+                response.addMessage(sliceMessage);
             } catch (NoSuchElementException ignored) {
-                System.out.println("Master - ConnectionHandler - " + this.slave + " - No more work to do -> sending MASTER_EXIT to Slave");
+                System.out.println("Master - ConnectionHandler - " + this.slave + " - No more slices to do -> sending MASTER_EXIT to Slave");
                 Message exitMessage = new Message(MessageType.MASTER_EXIT);
                 response.addMessage(exitMessage);
             }

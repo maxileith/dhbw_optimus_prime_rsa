@@ -15,7 +15,6 @@ public class Main {
     public final static String PUB_RSA_KEY = "268342277565109549360836262560222031507";
     public final static String CHIFFRE = "2d80afa14a65a7bf26636f97c89b43d5";
     public final static int MASTER_SLICE_SIZE = 100;
-    public final static int SLAVE_SLICE_SIZE = 10;
 
     public static void main(String[] args) {
         /*

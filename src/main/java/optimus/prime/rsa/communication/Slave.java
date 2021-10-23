@@ -1,10 +1,9 @@
 package optimus.prime.rsa.communication;
 
 import optimus.prime.rsa.communication.payloads.HostsPayload;
+import optimus.prime.rsa.communication.payloads.SlicePayload;
 import optimus.prime.rsa.communication.payloads.SolutionPayload;
-import optimus.prime.rsa.communication.payloads.TaskPayload;
 import optimus.prime.rsa.crypto.Worker;
-import optimus.prime.rsa.main.Main;
 import optimus.prime.rsa.main.NetworkConfiguration;
 import optimus.prime.rsa.main.Utils;
 
@@ -22,11 +21,9 @@ public class Slave implements Runnable {
 
     private final NetworkConfiguration networkConfig;
     private final List<BigInteger> primes;
+    private Queue<SlicePayload> currentMinorSlices;
 
-    private int sliceSize;
-    private int startIndex;
-
-    private Queue<Integer> sliceQueue;
+    private final int WORKERS = 7;
 
     private boolean running = true;
 
@@ -61,7 +58,7 @@ public class Slave implements Runnable {
             return;
         }
         try {
-            ExecutorService es = Executors.newFixedThreadPool(10); //FIXME: change dynamic
+            ExecutorService es = Executors.newFixedThreadPool(this.WORKERS); //FIXME: change dynamic
             CompletionService<SolutionPayload> cs = new ExecutorCompletionService<>(es);
 
             System.out.println("Slave  - Sending hello message to master");
@@ -73,23 +70,21 @@ public class Slave implements Runnable {
             while (this.running) {
 
                 // wait for the slice queue to get filled
-                while ((this.sliceQueue == null || this.sliceQueue.isEmpty()) && !this.socket.isClosed()) {
+                while ((this.currentMinorSlices == null || this.currentMinorSlices.isEmpty()) && !this.socket.isClosed()) {
                     Thread.sleep(5);
                 }
 
-                int workers = this.sliceQueue.size();
-                System.out.println("Slave  - new sliceQueue needs " + workers + " workers");
+                System.out.println("Slave  - New work is assigned to the workers");
                 // do the math
-                while (!this.sliceQueue.isEmpty()) {
+                while (!this.currentMinorSlices.isEmpty()) {
                     cs.submit(new Worker(
-                            this.sliceQueue.remove() + this.startIndex,
-                            Main.SLAVE_SLICE_SIZE,
+                            this.currentMinorSlices.remove(),
                             this.primes
                     ));
                 }
 
                 // collect the results
-                for (int resultsReceived = 0; resultsReceived < workers && this.running; resultsReceived++) {
+                for (int resultsReceived = 0; resultsReceived < this.WORKERS && this.running; resultsReceived++) {
                     try {
                         Future<SolutionPayload> f = cs.take();
                         SolutionPayload s = f.get();
@@ -133,11 +128,8 @@ public class Slave implements Runnable {
         }
     }
 
-    private synchronized void setTaskDetails(TaskPayload taskPayload) {
-        this.startIndex = taskPayload.getStartIndex();
-        this.sliceSize = taskPayload.getSliceSize();
-
-        this.sliceQueue = Utils.getIndicesToDo(sliceSize, Main.SLAVE_SLICE_SIZE);
+    private synchronized void setCurrentSlice(SlicePayload majorSlice) {
+        this.currentMinorSlices = Utils.getNSlices(majorSlice.getStart(), majorSlice.getEnd(), WORKERS);
     }
 
     private void stopSlave() {
@@ -197,8 +189,8 @@ public class Slave implements Runnable {
         }
 
         private void handleNewWork(Message m) {
-            TaskPayload taskPayload = (TaskPayload) m.getPayload();
-            setTaskDetails(taskPayload);
+            SlicePayload slicePayload = (SlicePayload) m.getPayload();
+            setCurrentSlice(slicePayload);
             System.out.println("Slave  - Receiver - Received new working package");
         }
 
