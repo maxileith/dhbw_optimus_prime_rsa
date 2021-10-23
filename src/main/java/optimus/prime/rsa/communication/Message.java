@@ -4,24 +4,8 @@ import java.io.Serializable;
 
 public class Message implements Serializable {
 
-    /*
-    private final String possiblePrimes;
-    private final int sliceSize;
-    private final int startIndex;
-    private boolean foundRsaKey;
-    private int prime1;
-    private int prime2; */
-
-    private MessageType type;
-    private Object payload;
-
-    /*
-    public Message(String possiblePrimes, int sliceSize, int startIndex) {
-        super();
-        this.possiblePrimes = possiblePrimes;
-        this.sliceSize = sliceSize;
-        this.startIndex = startIndex;
-    }*/
+    private final MessageType type;
+    private final Object payload;
 
     public Message(MessageType type) {
         this.type = type;
@@ -30,14 +14,6 @@ public class Message implements Serializable {
 
     public Message(MessageType type, Object payload) {
         this.type = type;
-        this.payload = payload;
-    }
-
-    public void setType(MessageType type) {
-        this.type = type;
-    }
-
-    public void setPayload(Object payload) {
         this.payload = payload;
     }
 

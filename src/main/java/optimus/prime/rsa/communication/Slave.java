@@ -5,6 +5,7 @@ import optimus.prime.rsa.communication.payloads.SlicePayload;
 import optimus.prime.rsa.communication.payloads.SolutionPayload;
 import optimus.prime.rsa.crypto.Worker;
 import optimus.prime.rsa.main.NetworkConfiguration;
+import optimus.prime.rsa.main.StaticConfiguration;
 import optimus.prime.rsa.main.Utils;
 
 import java.io.*;
@@ -23,8 +24,6 @@ public class Slave implements Runnable {
     private final List<BigInteger> primes;
     private Queue<SlicePayload> currentMinorSlices;
 
-    private final int WORKERS = 7;
-
     private boolean running = true;
 
     public Slave(NetworkConfiguration networkConfig, List<BigInteger> primes) {
@@ -34,7 +33,7 @@ public class Slave implements Runnable {
         try {
             this.socket = new Socket(
                     networkConfig.getMasterAddress(),
-                    NetworkConfiguration.PORT
+                    StaticConfiguration.PORT
             );
             System.out.println("Slave  - established connection to master");
 
@@ -58,7 +57,7 @@ public class Slave implements Runnable {
             return;
         }
         try {
-            ExecutorService es = Executors.newFixedThreadPool(this.WORKERS); //FIXME: change dynamic
+            ExecutorService es = Executors.newFixedThreadPool(StaticConfiguration.SLAVE_WORKERS); //FIXME: change dynamic
             CompletionService<SolutionPayload> cs = new ExecutorCompletionService<>(es);
 
             System.out.println("Slave  - Sending hello message to master");
@@ -84,7 +83,7 @@ public class Slave implements Runnable {
                 }
 
                 // collect the results
-                for (int resultsReceived = 0; resultsReceived < this.WORKERS && this.running; resultsReceived++) {
+                for (int resultsReceived = 0; resultsReceived < StaticConfiguration.SLAVE_WORKERS && this.running; resultsReceived++) {
                     try {
                         Future<SolutionPayload> f = cs.take();
                         SolutionPayload s = f.get();
@@ -126,7 +125,7 @@ public class Slave implements Runnable {
     }
 
     private synchronized void setCurrentSlice(SlicePayload majorSlice) {
-        this.currentMinorSlices = Utils.getNSlices(majorSlice.getStart(), majorSlice.getEnd(), WORKERS);
+        this.currentMinorSlices = Utils.getNSlices(majorSlice.getStart(), majorSlice.getEnd(), StaticConfiguration.SLAVE_WORKERS);
     }
 
     private void stopSlave() {

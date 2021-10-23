@@ -14,13 +14,13 @@ import optimus.prime.rsa.communication.payloads.SolutionPayload;
 import optimus.prime.rsa.crypto.RSAHelper;
 import optimus.prime.rsa.main.Main;
 import optimus.prime.rsa.main.NetworkConfiguration;
+import optimus.prime.rsa.main.StaticConfiguration;
 import optimus.prime.rsa.main.Utils;
 
 public class Master implements Runnable {
 
     private ServerSocket serverSocket;
     private final List<Thread> connectionHandlerThreads = new ArrayList<>();
-    private static final int MAX_INCOMING_SLAVES = 1000;
 
     private final NetworkConfiguration networkConfig;
     private final List<BigInteger> primes;
@@ -34,12 +34,12 @@ public class Master implements Runnable {
         this.networkConfig = networkConfig;
         this.primes = primes;
 
-        this.slicesToDo = Utils.getSlices(0, this.primes.size() - 1, Main.MASTER_SLICE_SIZE);
+        this.slicesToDo = Utils.getSlices(0, this.primes.size() - 1, StaticConfiguration.MASTER_SLICE_SIZE);
 
         try {
             this.serverSocket = new ServerSocket(
-                    NetworkConfiguration.PORT,
-                    MAX_INCOMING_SLAVES,
+                    StaticConfiguration.PORT,
+                    StaticConfiguration.MAX_INCOMING_SLAVES,
                     this.networkConfig.getMasterAddress()
             );
             this.serverSocket.setSoTimeout(1000);
@@ -62,7 +62,7 @@ public class Master implements Runnable {
 
         if (this.solution != null) {
             RSAHelper helper = new RSAHelper();
-            System.out.println("Master - Decrypted text is \"" + helper.decrypt(this.solution.getPrime1().toString(), this.solution.getPrime2().toString(), Main.CHIFFRE) + "\"");
+            System.out.println("Master - Decrypted text is \"" + helper.decrypt(this.solution.getPrime1().toString(), this.solution.getPrime2().toString(), StaticConfiguration.CHIFFRE) + "\"");
         } else {
             System.out.println("Master - The solution cannot be found in the given prime numbers.");
         }

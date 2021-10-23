@@ -8,8 +8,6 @@ public class NetworkConfiguration {
     private List<InetAddress> hosts = new ArrayList<>();
     private InetAddress masterAddress;
 
-    public static final int PORT = 2504;
-
     public NetworkConfiguration(InetAddress masterAddress) {
         this.masterAddress = masterAddress;
     }

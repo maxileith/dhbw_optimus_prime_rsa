@@ -3,6 +3,7 @@ package optimus.prime.rsa.crypto;
 import optimus.prime.rsa.communication.payloads.SlicePayload;
 import optimus.prime.rsa.communication.payloads.SolutionPayload;
 import optimus.prime.rsa.main.Main;
+import optimus.prime.rsa.main.StaticConfiguration;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -31,7 +32,7 @@ public class Worker implements Callable<SolutionPayload> {
             // Sollte später auf die reine Big Integer Variante gewechselt werden
             for (BigInteger bInt : primes) {
                 BigInteger aInt = primes.get(a);
-                if (rsaHelper.isValid(aInt.toString(), bInt.toString(), Main.PUB_RSA_KEY)) { // TODO: Verify whether correct positioning
+                if (rsaHelper.isValid(aInt.toString(), bInt.toString(), StaticConfiguration.PUB_RSA_KEY)) { // TODO: Verify whether correct positioning
                     System.out.printf((LOG_MESSAGE_SOLUTION_FOUND) + "%n", this.slice, aInt, bInt);
                     return new SolutionPayload(aInt, bInt);
                 }
