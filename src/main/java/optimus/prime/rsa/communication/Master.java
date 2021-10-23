@@ -34,10 +34,7 @@ public class Master implements Runnable {
         this.networkConfig = networkConfig;
         this.primes = primes;
 
-        System.out.println(this.primes.size() / Main.MASTER_SLICE_SIZE);
-
         this.slicesToDo = Utils.getSlices(0, this.primes.size() - 1, Main.MASTER_SLICE_SIZE);
-        System.out.println(this.slicesToDo);
 
         try {
             this.serverSocket = new ServerSocket(
@@ -85,7 +82,7 @@ public class Master implements Runnable {
             } catch (SocketTimeoutException ignored) {
             }
         }
-        System.out.println("Master - Stopping ConnectionHandlers due to closed serverSocket");
+        System.out.println("Master - Stopping ConnectionHandlers");
     }
 
     private synchronized void markAsSolved(SolutionPayload s) {
