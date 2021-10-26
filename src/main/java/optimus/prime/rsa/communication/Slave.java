@@ -171,7 +171,7 @@ public class Slave implements Runnable {
         }
 
         private void handleMessages(MultiMessage messages) {
-            System.out.println("Master - ConnectionHandler - Received MultiMessage");
+            System.out.println("Slave - ConnectionHandler - Received MultiMessage");
             for (Message m : messages.getAllMessages()) {
                 switch (m.getType()) {
                     case MASTER_HOSTS_LIST -> this.handleHostList(m);
