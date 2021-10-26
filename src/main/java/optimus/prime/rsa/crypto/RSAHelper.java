@@ -15,35 +15,34 @@ import java.security.SecureRandom;
 
 /**
  * this class will check if a private key is valid or not
- * */
-public class RSAHelper
-{
+ */
+public class RSAHelper {
 
     /**
      * this method returns a if a RSA key generated out of p and q fits to the public key
-     * @param p the first prime
-     * @param q the second prime
+     *
+     * @param p         the first prime
+     * @param q         the second prime
      * @param publicKey the key to check against
      * @return true, if the private key fits to the public key, else false
-     * */
-    public boolean isValid(String p, String q, String publicKey)
-    {
+     */
+    public boolean isValid(String p, String q, String publicKey) {
         BigInteger P = new BigInteger(p);
         BigInteger Q = new BigInteger(q);
         BigInteger MODULUS = new BigInteger(publicKey);
 
         RSAHelper checker = new RSAHelper();
-        return checker.isValid(P,Q,MODULUS);
+        return checker.isValid(P, Q, MODULUS);
     }
 
     /**
      * this method is used to generate a keypair to be used in BC for crypto stuff
+     *
      * @param p the first prime
      * @param q the second prime
      * @return AsymmetricCipherKeyPair the key pair
-     * */
-    private AsymmetricCipherKeyPair getKeyPair(String p, String q)
-    {
+     */
+    private AsymmetricCipherKeyPair getKeyPair(String p, String q) {
         // first we need the generator
         RSAKeyPairGenerator ownGenerator
                 = new RSAKeyPairGenerator();
@@ -57,54 +56,50 @@ public class RSAHelper
         BigInteger P = new BigInteger(p);
         BigInteger Q = new BigInteger(q);
 
-        AsymmetricCipherKeyPair keyPair = ownGenerator.generateKeyPair(P,Q);
+        AsymmetricCipherKeyPair keyPair = ownGenerator.generateKeyPair(P, Q);
         return keyPair;
     }
 
     /**
      * this method decodes a cipher text and returns the decrypted text
-     * @param p P prime factor of the private key
-     * @param q Q prime factor of the private key
+     *
+     * @param p      P prime factor of the private key
+     * @param q      Q prime factor of the private key
      * @param cipher String HEX encoded and encrypted
      * @return the decoded {@link String} in UTF-8
-     * */
-    public String decrypt(String p, String q, String cipher)
-    {
-        AsymmetricCipherKeyPair keyPair = getKeyPair(p,q);
-        return decrypt(keyPair,cipher);
+     */
+    public String decrypt(String p, String q, String cipher) {
+        AsymmetricCipherKeyPair keyPair = getKeyPair(p, q);
+        return decrypt(keyPair, cipher);
     }
 
     /**
      * this method checks if the 2 primes will lead to a bitlength as exspected
-     * @param p the first prime
-     * @param q the second prime
+     *
+     * @param p         the first prime
+     * @param q         the second prime
      * @param bitLength b
      * @return true, if the strength is valid
-     * */
-    public boolean isStrengthValid(BigInteger p, BigInteger q, int bitLength)
-    {
+     */
+    public boolean isStrengthValid(BigInteger p, BigInteger q, int bitLength) {
         BigInteger n = p.multiply(q);
         int bitL = n.bitLength();
         //System.out.println("p: '"+p+"', q: '"+q+"' => strength is: "+bitL+"bits");
-        if (bitL == bitLength)
-        {
-            return true;
-        }
-        else return false;
+        return bitL == bitLength;
     }
 
     /**
      * this method returns a if a RSA key generated out of p and q fits to the public key
-     * @param p the first prime
-     * @param q the second prime
+     *
+     * @param p                the first prime
+     * @param q                the second prime
      * @param modulusPublicKey the key to check against
      * @return true, if the private key fits to the public key, else false
-     * */
-    public boolean isValid(BigInteger p, BigInteger q, BigInteger modulusPublicKey)
-    {
+     */
+    public boolean isValid(BigInteger p, BigInteger q, BigInteger modulusPublicKey) {
         RSAKeyPairGenerator generator =
                 new RSAKeyPairGenerator();
-        generator.init( new RSAKeyGenerationParameters(
+        generator.init(new RSAKeyGenerationParameters(
                 RSAStatics.e,
                 new SecureRandom(),
                 RSAStatics.KEYSIZE,
@@ -112,18 +107,15 @@ public class RSAHelper
         );
 
 
-        try
-        {
-            AsymmetricCipherKeyPair keyPair =generator.generateKeyPair(p,q);
+        try {
+            AsymmetricCipherKeyPair keyPair = generator.generateKeyPair(p, q);
 
-            RSAKeyParameters params =  (RSAKeyParameters) keyPair.getPublic();
+            RSAKeyParameters params = (RSAKeyParameters) keyPair.getPublic();
 
             BigInteger modulus = params.getModulus();
 
             return modulus.equals(modulusPublicKey);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             //e.printStackTrace();
             //System.err.println("ERROR: "+e.toString()); // this method floods the console, we don't need it here
             return false;
@@ -133,12 +125,12 @@ public class RSAHelper
 
     /**
      * this method decodes a cipher text and returns the decrypted text
-     * @param keypair RSA keypair to use
+     *
+     * @param keypair       RSA keypair to use
      * @param encodedString String HEX encoded and encrypted
      * @return the decoded {@link String} in UTF-8
-     * */
-    public String decrypt(AsymmetricCipherKeyPair keypair, String encodedString)
-    {
+     */
+    public String decrypt(AsymmetricCipherKeyPair keypair, String encodedString) {
         StringBuilder value = new StringBuilder();
         AsymmetricKeyParameter key = keypair.getPrivate();
         AsymmetricBlockCipher e = new RSAEngine();
@@ -148,8 +140,7 @@ public class RSAHelper
             byte[] messageBytes = Hex.decode(encodedString);
             int i = 0;
             int len = e.getInputBlockSize();
-            while (i < messageBytes.length)
-            {
+            while (i < messageBytes.length) {
                 if (i + len > messageBytes.length)
                     len = messageBytes.length - i;
 
@@ -161,8 +152,7 @@ public class RSAHelper
                 i += e.getInputBlockSize();
             }
             return value.toString();
-        }
-        catch (InvalidCipherTextException invalidCipherTextException) {
+        } catch (InvalidCipherTextException invalidCipherTextException) {
             invalidCipherTextException.printStackTrace();
         }
 
@@ -171,12 +161,12 @@ public class RSAHelper
 
     /**
      * this method encodes a text and returns the cipher text base64 encoded
-     * @param keypair RSA keypair to use
+     *
+     * @param keypair  RSA keypair to use
      * @param clearTxt String HEX encoded and encrypted
      * @return the encoded and encrypted {@link String} in base64
-     * */
-    public String encrypt(AsymmetricCipherKeyPair keypair, String clearTxt)
-    {
+     */
+    public String encrypt(AsymmetricCipherKeyPair keypair, String clearTxt) {
         StringBuilder value = new StringBuilder();
         AsymmetricKeyParameter publicKey = keypair.getPublic();
         AsymmetricBlockCipher e = new RSAEngine();
@@ -186,8 +176,7 @@ public class RSAHelper
             byte[] messageBytes = clearTxt.getBytes(StandardCharsets.UTF_8);
             int i = 0;
             int len = e.getInputBlockSize();
-            while (i < messageBytes.length)
-            {
+            while (i < messageBytes.length) {
                 if (i + len > messageBytes.length)
                     len = messageBytes.length - i;
 
@@ -199,8 +188,7 @@ public class RSAHelper
                 i += e.getInputBlockSize();
             }
             return value.toString();
-        }
-        catch (InvalidCipherTextException invalidCipherTextException) {
+        } catch (InvalidCipherTextException invalidCipherTextException) {
             invalidCipherTextException.printStackTrace();
         }
 
