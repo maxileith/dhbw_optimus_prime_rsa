@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.Queue;
 
 public class Utils {
+
+    // TODO: maybe make an algorithm that makes slices that are equally hard to calculate
+
     public static Queue<SlicePayload> getSlices(int start, int end, int stepSize) {
         Queue<SlicePayload> slices = new LinkedList<>();
         for (int i = start; i <= end; i += stepSize) {
@@ -35,18 +38,14 @@ public class Utils {
         final String fileName = "primes1000.txt";
         final InputStream stream = Main.class.getClassLoader().getResourceAsStream(fileName);
 
-        if (stream == null) {
-            return primes;
-        }
-
         try (BufferedReader br = new BufferedReader(new InputStreamReader(stream))) {
             String line;
             while ((line = br.readLine()) != null) {
                 BigInteger value = new BigInteger(line);
                 primes.add(value);
             }
-        } catch (IOException e) {
-            System.out.println("Couldn't load primes - " + e);
+        } catch (IOException | NullPointerException e) {
+            System.err.println("Couldn't load primes - " + e);
             System.exit(1);
         }
 
