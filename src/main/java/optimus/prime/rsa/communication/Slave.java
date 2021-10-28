@@ -2,8 +2,8 @@ package optimus.prime.rsa.communication;
 
 import optimus.prime.rsa.communication.payloads.*;
 import optimus.prime.rsa.crypto.Worker;
-import optimus.prime.rsa.main.NetworkConfiguration;
-import optimus.prime.rsa.main.StaticConfiguration;
+import optimus.prime.rsa.config.NetworkConfiguration;
+import optimus.prime.rsa.config.StaticConfiguration;
 import optimus.prime.rsa.main.Utils;
 
 import java.io.*;
@@ -49,6 +49,7 @@ public class Slave implements Runnable {
     }
 
     @Override
+    @SuppressWarnings("BusyWait")
     public void run() {
         if (!this.running) {
             return;
@@ -59,8 +60,8 @@ public class Slave implements Runnable {
 
             System.out.println("Slave  - Sending hello message to master");
 
-            Message initM = new Message(MessageType.SLAVE_JOIN);
-            this.objectOutputStream.writeObject(initM);
+            Message joinMessage = new Message(MessageType.SLAVE_JOIN);
+            this.objectOutputStream.writeObject(joinMessage);
             this.objectOutputStream.flush();
 
             while (this.running) {
@@ -189,6 +190,8 @@ public class Slave implements Runnable {
                     case MASTER_EXIT -> this.stopReceiver();
                     case MASTER_SEND_PRIMES -> this.handleMasterSendPrimes(m);
                     case MASTER_SEND_PUB_KEY_RSA -> this.handleMasterSendPubKeyRsa(m);
+                    case MASTER_UNFINISHED_SLICES -> this.handleUnfinishedSlicesUpdate(m);
+                    case MASTER_CIPHER -> this.handleCipher(m);
                     default -> System.out.println("Slave  - Receiver - Unknown message type");
                 }
             }
@@ -223,6 +226,18 @@ public class Slave implements Runnable {
             PubKeyRsaPayload pubKeyRsaPayload = (PubKeyRsaPayload) m.getPayload();
             setPubKeyRsa(pubKeyRsaPayload.getPubKeyRsa());
             System.out.println("Slave  - Receiver - set public key to \"" + pubKeyRsaPayload.getPubKeyRsa() + "\"");
+        }
+
+        private void handleUnfinishedSlicesUpdate(Message m) {
+            UnfinishedSlicesPayload unfinishedSlicesPayload = (UnfinishedSlicesPayload) m.getPayload();
+            System.out.println("Slave  - Receiver - received update of unfinished work");
+            // FIXME: do something with that
+        }
+
+        private void handleCipher(Message m) {
+            CipherPayload cipherPayload = (CipherPayload) m.getPayload();
+            System.out.println("Slave  - Receiver - received cipher: \"" + cipherPayload.getCipher() + "\"");
+            // FIXME: do something with that
         }
     }
 }

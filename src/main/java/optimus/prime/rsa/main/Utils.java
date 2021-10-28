@@ -22,24 +22,25 @@ public class Utils {
         }
         return slices;
     }
+
     public static Queue<SlicePayload> getNSlices(int start, int end, int n) {
-        int stepSize = (int) Math.ceil((float)(end - start + 1) / n);
+        int stepSize = (int) Math.ceil((float) (end - start + 1) / n);
         return getSlices(start, end, stepSize);
     }
 
     public static List<BigInteger> getPrimes() {
         List<BigInteger> primes = new ArrayList<>();
 
-        final String fileName = "primes10000_mod2.txt";
+        final String fileName = "primes100.txt";
         final InputStream stream = Main.class.getClassLoader().getResourceAsStream(fileName);
 
         if (stream == null) {
             return primes;
         }
 
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(stream))){
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(stream))) {
             String line;
-            while((line = br.readLine()) != null) {
+            while ((line = br.readLine()) != null) {
                 BigInteger value = new BigInteger(line);
                 primes.add(value);
             }

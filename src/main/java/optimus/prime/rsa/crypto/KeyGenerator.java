@@ -17,7 +17,7 @@ public class KeyGenerator {
 
     /**
      * this method we use to generate our test keys
-     * */
+     */
     public static void main(String[] args) throws NoSuchAlgorithmException, IOException {
         RSAKeyPairGenerator ownGenerator
                 = new RSAKeyPairGenerator();
@@ -30,19 +30,20 @@ public class KeyGenerator {
         String path = "src/main/resources/primes10000.txt";
         File f = new File(path);
         if (!f.exists()) f.createNewFile();
-        BufferedWriter bw = new BufferedWriter( new FileWriter(f));
+        BufferedWriter bw = new BufferedWriter(new FileWriter(f));
 
-        for(long i = 0; i < MAX; i++)
-        {
+        for (long i = 0; i < MAX; i++) {
             AsymmetricCipherKeyPair keyPair = ownGenerator.generateKeyPair();
 
-            RSAPrivateCrtKeyParameters privateKey =  (RSAPrivateCrtKeyParameters) keyPair.getPrivate();
+            RSAPrivateCrtKeyParameters privateKey = (RSAPrivateCrtKeyParameters) keyPair.getPrivate();
 
-            System.out.println("p => '"+privateKey.getP()+"'");
-            System.out.println("q => '"+privateKey.getQ()+"'");
+            System.out.println("p => '" + privateKey.getP() + "'");
+            System.out.println("q => '" + privateKey.getQ() + "'");
 
-            bw.write(String.valueOf(privateKey.getP())); bw.newLine();
-            bw.write(String.valueOf(privateKey.getQ())); bw.newLine();
+            bw.write(String.valueOf(privateKey.getP()));
+            bw.newLine();
+            bw.write(String.valueOf(privateKey.getQ()));
+            bw.newLine();
 
         }
         bw.close();

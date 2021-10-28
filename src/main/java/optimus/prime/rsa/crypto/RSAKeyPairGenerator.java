@@ -15,14 +15,12 @@ public class RSAKeyPairGenerator extends org.bouncycastle.crypto.generators.RSAK
     private RSAKeyGenerationParameters param;
 
     public void init(
-            KeyGenerationParameters param)
-    {
+            KeyGenerationParameters param) {
         super.init(param);
-        this.param = (RSAKeyGenerationParameters)param;
+        this.param = (RSAKeyGenerationParameters) param;
     }
 
-    public AsymmetricCipherKeyPair generateKeyPair(BigInteger p, BigInteger q)
-    {
+    public AsymmetricCipherKeyPair generateKeyPair(BigInteger p, BigInteger q) {
         BigInteger n, d, e, pSub1, qSub1, phi;
 
         e = param.getPublicExponent();
@@ -32,8 +30,7 @@ public class RSAKeyPairGenerator extends org.bouncycastle.crypto.generators.RSAK
         //
         n = p.multiply(q);
 
-        if (p.compareTo(q) < 0)
-        {
+        if (p.compareTo(q) < 0) {
             phi = p;
             p = q;
             q = phi;
@@ -51,7 +48,7 @@ public class RSAKeyPairGenerator extends org.bouncycastle.crypto.generators.RSAK
         //
         // calculate the CRT factors
         //
-        BigInteger    dP, dQ, qInv;
+        BigInteger dP, dQ, qInv;
 
         dP = d.remainder(pSub1);
         dQ = d.remainder(qSub1);
@@ -62,9 +59,8 @@ public class RSAKeyPairGenerator extends org.bouncycastle.crypto.generators.RSAK
                 new RSAPrivateCrtKeyParameters(n, e, d, p, q, dP, dQ, qInv));
     }
 
-    public AsymmetricCipherKeyPair generateKeyPair(BigInteger p)
-    {
-        BigInteger    q, n, d, e, pSub1, qSub1, phi;
+    public AsymmetricCipherKeyPair generateKeyPair(BigInteger p) {
+        BigInteger q, n, d, e, pSub1, qSub1, phi;
 
         //
         // p and q values should have a length of half the strength in bits
@@ -79,32 +75,26 @@ public class RSAKeyPairGenerator extends org.bouncycastle.crypto.generators.RSAK
         //
         // generate a modulus of the required length
         //
-        for (;;)
-        {
+        for (; ; ) {
             // generate q, prime and (q-1) relatively prime to e,
             // and not equal to p
             //
-            for (;;)
-            {
+            for (; ; ) {
                 q = new BigInteger(qbitlength, 1, param.getRandom());
 
-                if (q.subtract(p).abs().bitLength() < mindiffbits)
-                {
+                if (q.subtract(p).abs().bitLength() < mindiffbits) {
                     continue;
                 }
 
-                if (q.mod(e).equals(ONE))
-                {
+                if (q.mod(e).equals(ONE)) {
                     continue;
                 }
 
-                if (!q.isProbablePrime(param.getCertainty()))
-                {
+                if (!q.isProbablePrime(param.getCertainty())) {
                     continue;
                 }
 
-                if (e.gcd(q.subtract(ONE)).equals(ONE))
-                {
+                if (e.gcd(q.subtract(ONE)).equals(ONE)) {
                     break;
                 }
             }
@@ -114,8 +104,7 @@ public class RSAKeyPairGenerator extends org.bouncycastle.crypto.generators.RSAK
             //
             n = p.multiply(q);
 
-            if (n.bitLength() == param.getStrength())
-            {
+            if (n.bitLength() == param.getStrength()) {
                 break;
             }
 
@@ -126,8 +115,7 @@ public class RSAKeyPairGenerator extends org.bouncycastle.crypto.generators.RSAK
             p = p.max(q);
         }
 
-        if (p.compareTo(q) < 0)
-        {
+        if (p.compareTo(q) < 0) {
             phi = p;
             p = q;
             q = phi;
@@ -145,7 +133,7 @@ public class RSAKeyPairGenerator extends org.bouncycastle.crypto.generators.RSAK
         //
         // calculate the CRT factors
         //
-        BigInteger    dP, dQ, qInv;
+        BigInteger dP, dQ, qInv;
 
         dP = d.remainder(pSub1);
         dQ = d.remainder(qSub1);

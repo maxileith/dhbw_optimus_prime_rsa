@@ -1,4 +1,4 @@
-package optimus.prime.rsa.main;
+package optimus.prime.rsa.config;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
@@ -20,7 +20,9 @@ public class NetworkConfiguration {
         return hosts;
     }
 
-    public void setHosts(List<InetAddress> hosts) { this.hosts = hosts; }
+    public void setHosts(List<InetAddress> hosts) {
+        this.hosts = hosts;
+    }
 
     public void setMasterAddress(InetAddress masterAddress) {
         this.masterAddress = masterAddress;

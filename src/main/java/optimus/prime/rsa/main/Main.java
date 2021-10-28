@@ -4,6 +4,9 @@ import optimus.prime.rsa.argumentparser.ArgumentParser;
 import optimus.prime.rsa.argumentparser.ArgumentBlueprint;
 import optimus.prime.rsa.communication.Master;
 import optimus.prime.rsa.communication.Slave;
+import optimus.prime.rsa.config.MasterConfiguration;
+import optimus.prime.rsa.config.NetworkConfiguration;
+import optimus.prime.rsa.config.StaticConfiguration;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -63,7 +66,7 @@ public class Main {
         );
         ap.addArgument(
                 new ArgumentBlueprint(
-                        "chiffre",
+                        "cipher",
                         true,
                         "master-only: defines encrypted payload to decrypt",
                         ""
@@ -102,8 +105,8 @@ public class Main {
         if (isMaster) {
             // pub-rsa-key key
             MasterConfiguration.PUB_RSA_KEY = ap.get("pub-rsa-key");
-            // chiffre key
-            MasterConfiguration.CHIFFRE = ap.get("chiffre");
+            // cipher key
+            MasterConfiguration.CIPHER = ap.get("cipher");
             // master-slice-size key
             MasterConfiguration.MASTER_SLICE_SIZE = Integer.parseInt(ap.get("master-slice-size"));
             // max-slaves key

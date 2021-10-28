@@ -9,6 +9,9 @@ import java.net.SocketTimeoutException;
 import java.util.*;
 
 import optimus.prime.rsa.communication.payloads.*;
+import optimus.prime.rsa.config.MasterConfiguration;
+import optimus.prime.rsa.config.NetworkConfiguration;
+import optimus.prime.rsa.config.StaticConfiguration;
 import optimus.prime.rsa.crypto.RSAHelper;
 import optimus.prime.rsa.main.*;
 
@@ -66,7 +69,7 @@ public class Master implements Runnable {
 
         if (this.solution != null) {
             RSAHelper helper = new RSAHelper();
-            System.out.println("Master - Decrypted text is \"" + helper.decrypt(this.solution.getPrime1().toString(), this.solution.getPrime2().toString(), MasterConfiguration.CHIFFRE) + "\"");
+            System.out.println("Master - Decrypted text is \"" + helper.decrypt(this.solution.getPrime1().toString(), this.solution.getPrime2().toString(), MasterConfiguration.CIPHER) + "\"");
         } else {
             System.out.println("Master - The solution cannot be found in the given prime numbers.");
         }
@@ -79,7 +82,11 @@ public class Master implements Runnable {
             try {
                 Socket slave = this.serverSocket.accept();
                 System.out.println("Master - Connection from " + slave + " established.");
-                ConnectionHandler handler = new ConnectionHandler(slave, networkConfig);
+                ConnectionHandler handler = new ConnectionHandler(
+                        slave,
+                        this.networkConfig,
+                        this.broadcaster
+                );
                 Thread thread = new Thread(handler);
                 thread.start();
                 this.connectionHandlerThreads.add(thread);
@@ -106,12 +113,23 @@ public class Master implements Runnable {
         this.slicesInProgress.remove(slice);
     }
 
+    private synchronized void abortSlice(SlicePayload slice) {
+        System.out.println("Master - Slice " + slice + " added back to queue");
+        this.slicesInProgress.remove(slice);
+    }
+
     private synchronized List<BigInteger> getPrimes() {
         return this.primes;
     }
 
     private synchronized Map<InetAddress, SyncedObjectOutputStream> getOutputStreamsForBroadcasting() {
         return this.outputStreamsForBroadcasting;
+    }
+
+    private Queue<SlicePayload> getUnfinishedSlices() {
+        final Queue<SlicePayload> unfinishedSlices = new LinkedList<>(this.slicesToDo);
+        unfinishedSlices.addAll(this.slicesInProgress);
+        return unfinishedSlices;
     }
 
     private void stop() {
@@ -144,15 +162,17 @@ public class Master implements Runnable {
 
         private final Socket slave;
         private boolean running = true;
+        private final Broadcaster broadcaster;
 
         private final NetworkConfiguration networkConfig;
 
         private SlicePayload currentSlice;
 
-        public ConnectionHandler(Socket slave, NetworkConfiguration networkConfig) {
+        public ConnectionHandler(Socket slave, NetworkConfiguration networkConfig, Broadcaster broadcaster) {
             System.out.println("Master - ConnectionHandler - " + slave + " - Initializing new ConnectionHandler.");
             this.slave = slave;
             this.networkConfig = networkConfig;
+            this.broadcaster = broadcaster;
         }
 
         @Override
@@ -179,23 +199,24 @@ public class Master implements Runnable {
             } catch (IOException e) {
                 if (this.running) {
                     System.err.println("Master - ConnectionHandler - " + this.slave + " - Object Input stream closed " + e);
-                    // FIXME: Slave died
+                    // Slave died
+                    abortSlice(this.currentSlice);
                 } else {
                     System.out.println("Master - ConnectionHandler - " + this.slave + " - Slave disconnected because solution was found.");
                 }
             } catch (ClassNotFoundException e) {
-                System.err.println("Master - ConnectionHandler - Class of incoming object unknown - " + e);
+                System.err.println("Master - ConnectionHandler - " + this.slave + " - Class of incoming object unknown - " + e);
             } finally {
                 getOutputStreamsForBroadcasting().remove(this.slave.getInetAddress());
             }
 
-            System.out.println("Master - ConnectionHandler - Terminated");
+            System.out.println("Master - ConnectionHandler - " + this.slave + " - Terminated");
         }
 
         private MultiMessage handleMessage(Message m) {
             System.out.println("Master - ConnectionHandler - " + this.slave + " - Received message");
             return switch (m.getType()) {
-                case SLAVE_JOIN -> this.handleSlaveJoin(m);
+                case SLAVE_JOIN -> this.handleJoin();
                 case SLAVE_FINISHED_WORK -> this.handleSlaveFinishedWork();
                 case SLAVE_SOLUTION_FOUND -> this.handleSolutionFound(m);
                 case SLAVE_EXIT_ACKNOWLEDGE -> this.handleExitAcknowledge();
@@ -203,19 +224,13 @@ public class Master implements Runnable {
             };
         }
 
-        private MultiMessage handleSlaveJoin(Message m) {
+        private MultiMessage handleJoin() {
             System.out.println("Master - ConnectionHandler - " + this.slave + " - Slave wants to join");
-            // JoinPayload payload = (JoinPayload) m.getPayload();
             MultiMessage response = new MultiMessage();
 
             // Add slave IP-Address to network Information
             InetAddress slaveAddress = this.slave.getInetAddress();
             this.networkConfig.addHost(slaveAddress);
-
-            // create payload of current hosts
-            HostsPayload hostsPayload = new HostsPayload(this.networkConfig.getHosts());
-            Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
-            response.addMessage(hostsMessage);
 
             // create payload of primes
             PrimesPayload primesPayload = new PrimesPayload(getPrimes());
@@ -223,11 +238,17 @@ public class Master implements Runnable {
             response.addMessage(primesMessage);
             System.out.println("Master - ConnectionHandler - " + this.slave + " - Sending primes to Slave");
 
-            // create payload for the public kry
+            // create payload for the public key
             PubKeyRsaPayload pubKeyRsaPayload = new PubKeyRsaPayload(MasterConfiguration.PUB_RSA_KEY);
             Message pubKeyRsaMessage = new Message(MessageType.MASTER_SEND_PUB_KEY_RSA, pubKeyRsaPayload);
             response.addMessage(pubKeyRsaMessage);
             System.out.println("Master - ConnectionHandler - " + this.slave + " - Sending the public key: \"" + MasterConfiguration.PUB_RSA_KEY + "\"");
+
+            // create payload for the cipher
+            CipherPayload cipherPayload = new CipherPayload(MasterConfiguration.CIPHER);
+            Message cipherMessage = new Message(MessageType.MASTER_CIPHER, cipherPayload);
+            response.addMessage(cipherMessage);
+            System.out.println("Master - ConnectionHandler - " + this.slave + " - Sending the cipher: \"" + MasterConfiguration.CIPHER + "\"");
 
             // create payload for next tasks
             this.currentSlice = getNextSlice();
@@ -235,7 +256,15 @@ public class Master implements Runnable {
             response.addMessage(sliceMessage);
             System.out.println("Master - ConnectionHandler - " + this.slave + " - Sending new work to Slave: " + this.currentSlice);
 
-            // TODO: send new host list to all slaves
+            // send new hosts list to all slaves
+            HostsPayload hostsPayload = new HostsPayload(this.networkConfig.getHosts());
+            Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
+            this.broadcaster.send(hostsMessage);
+
+            // send new unfinished slices to all slaves
+            UnfinishedSlicesPayload unfinishedSlicesPayload = new UnfinishedSlicesPayload(getUnfinishedSlices());
+            Message unfinishedSlicesMessage = new Message(MessageType.MASTER_UNFINISHED_SLICES, unfinishedSlicesPayload);
+            this.broadcaster.send(unfinishedSlicesMessage);
 
             return response;
         }
@@ -245,8 +274,6 @@ public class Master implements Runnable {
             // except TaskPayload
             MultiMessage response = new MultiMessage();
 
-            // remove done slice from list
-            // TODO: Es wird noch nicht gehandelt, dass der start_index in die Queue aufgenommen wird, sofern der Slave disconnected
             markSliceAsDone(this.currentSlice);
 
             // create new slice for slave
@@ -259,8 +286,14 @@ public class Master implements Runnable {
             } catch (NoSuchElementException ignored) {
                 System.out.println("Master - ConnectionHandler - " + this.slave + " - No more slices to do -> sending MASTER_EXIT to Broadcaster");
                 Message exitMessage = new Message(MessageType.MASTER_EXIT);
-                broadcaster.send(exitMessage);
+                this.broadcaster.send(exitMessage);
             }
+
+            // send new unfinished slices to all slaves
+            UnfinishedSlicesPayload unfinishedSlicesPayload = new UnfinishedSlicesPayload(getUnfinishedSlices());
+            Message unfinishedSlicesMessage = new Message(MessageType.MASTER_UNFINISHED_SLICES, unfinishedSlicesPayload);
+            this.broadcaster.send(unfinishedSlicesMessage);
+
             return null;
         }
 
@@ -273,7 +306,7 @@ public class Master implements Runnable {
 
             System.out.println("Master - ConnectionHandler - " + this.slave + " - No more slices to do -> sending MASTER_EXIT to Broadcaster");
             Message exitMessage = new Message(MessageType.MASTER_EXIT);
-            broadcaster.send(exitMessage);
+            this.broadcaster.send(exitMessage);
 
             return null;
         }
@@ -300,13 +333,14 @@ public class Master implements Runnable {
         }
 
         @Override
+        @SuppressWarnings("BusyWait")
         public void run() {
             while (this.running) {
                 if (this.queue.isEmpty()) {
                     try {
                         Thread.sleep(5);
                     } catch (InterruptedException e) {
-                        System.out.println("Master - Broadcaster - Error while sleeping - " + e);
+                        System.out.println("Master - Broadcaster - Error while waiting - " + e);
                     }
                     continue;
                 }

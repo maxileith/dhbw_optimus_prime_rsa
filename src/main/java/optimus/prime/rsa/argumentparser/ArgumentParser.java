@@ -17,7 +17,7 @@ public class ArgumentParser {
     public void load(String[] args) {
         Pattern keyPattern = Pattern.compile("^--([^\s]+)$");
 
-        for (String a: args) {
+        for (String a : args) {
             if (a.equals("--help")) {
                 this.help();
             }
@@ -60,7 +60,7 @@ public class ArgumentParser {
     }
 
     private void checkIntegrity() {
-        for (ArgumentBlueprint a: this.list) {
+        for (ArgumentBlueprint a : this.list) {
             if (a.isRequired() && a.getValue() == null) {
                 System.err.println("key \"" + a.getKey() + "\" is required.");
                 this.help();
@@ -70,7 +70,7 @@ public class ArgumentParser {
 
     private void help() {
         System.out.printf("%-17s %-65s %-9s %-15s%n", "key", "description", "required", "default");
-        for (ArgumentBlueprint a: this.list) {
+        for (ArgumentBlueprint a : this.list) {
             System.out.println(a);
         }
         System.exit(0);
