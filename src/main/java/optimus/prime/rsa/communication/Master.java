@@ -8,14 +8,9 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.*;
 
-import optimus.prime.rsa.communication.payloads.HostsPayload;
-import optimus.prime.rsa.communication.payloads.SlicePayload;
-import optimus.prime.rsa.communication.payloads.SolutionPayload;
+import optimus.prime.rsa.communication.payloads.*;
 import optimus.prime.rsa.crypto.RSAHelper;
-import optimus.prime.rsa.main.Main;
-import optimus.prime.rsa.main.NetworkConfiguration;
-import optimus.prime.rsa.main.StaticConfiguration;
-import optimus.prime.rsa.main.Utils;
+import optimus.prime.rsa.main.*;
 
 public class Master implements Runnable {
 
@@ -30,16 +25,16 @@ public class Master implements Runnable {
 
     private SolutionPayload solution = null;
 
-    public Master(NetworkConfiguration networkConfig, List<BigInteger> primes) {
+    public Master(NetworkConfiguration networkConfig) {
         this.networkConfig = networkConfig;
-        this.primes = primes;
+        this.primes = Utils.getPrimes();
 
-        this.slicesToDo = Utils.getSlices(0, this.primes.size() - 1, StaticConfiguration.MASTER_SLICE_SIZE);
+        this.slicesToDo = Utils.getSlices(0, this.primes.size() - 1, MasterConfiguration.MASTER_SLICE_SIZE);
 
         try {
             this.serverSocket = new ServerSocket(
                     StaticConfiguration.PORT,
-                    StaticConfiguration.MAX_INCOMING_SLAVES,
+                    MasterConfiguration.MAX_INCOMING_SLAVES,
                     this.networkConfig.getMasterAddress()
             );
             this.serverSocket.setSoTimeout(1000);
@@ -62,7 +57,7 @@ public class Master implements Runnable {
 
         if (this.solution != null) {
             RSAHelper helper = new RSAHelper();
-            System.out.println("Master - Decrypted text is \"" + helper.decrypt(this.solution.getPrime1().toString(), this.solution.getPrime2().toString(), StaticConfiguration.CHIFFRE) + "\"");
+            System.out.println("Master - Decrypted text is \"" + helper.decrypt(this.solution.getPrime1().toString(), this.solution.getPrime2().toString(), MasterConfiguration.CHIFFRE) + "\"");
         } else {
             System.out.println("Master - The solution cannot be found in the given prime numbers.");
         }
@@ -100,6 +95,10 @@ public class Master implements Runnable {
     private synchronized void markSliceAsDone(SlicePayload slice) {
         System.out.println("Master - Slice " + slice + " is done");
         this.slicesInProgress.remove(slice);
+    }
+
+    private synchronized List<BigInteger> getPrimes() {
+        return this.primes;
     }
 
     private void stop() {
@@ -191,6 +190,18 @@ public class Master implements Runnable {
             HostsPayload hostsPayload = new HostsPayload(this.networkConfig.getHosts());
             Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
             response.addMessage(hostsMessage);
+
+            // create payload of primes
+            PrimesPayload primesPayload = new PrimesPayload(getPrimes());
+            Message primesMessage = new Message(MessageType.MASTER_SEND_PRIMES, primesPayload);
+            response.addMessage(primesMessage);
+            System.out.println("Master - ConnectionHandler - " + this.slave + " - Sending primes to Slave");
+
+            // create payload for the public kry
+            PubKeyRsaPayload pubKeyRsaPayload = new PubKeyRsaPayload(MasterConfiguration.PUB_RSA_KEY);
+            Message pubKeyRsaMessage = new Message(MessageType.MASTER_SEND_PUB_KEY_RSA, pubKeyRsaPayload);
+            response.addMessage(pubKeyRsaMessage);
+            System.out.println("Master - ConnectionHandler - " + this.slave + " - Sending the public key: \"" + MasterConfiguration.PUB_RSA_KEY + "\"");
 
             // create payload for next tasks
             this.currentSlice = getNextSlice();

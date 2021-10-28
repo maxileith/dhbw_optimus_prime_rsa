@@ -1,8 +1,6 @@
 package optimus.prime.rsa.communication;
 
-import optimus.prime.rsa.communication.payloads.HostsPayload;
-import optimus.prime.rsa.communication.payloads.SlicePayload;
-import optimus.prime.rsa.communication.payloads.SolutionPayload;
+import optimus.prime.rsa.communication.payloads.*;
 import optimus.prime.rsa.crypto.Worker;
 import optimus.prime.rsa.main.NetworkConfiguration;
 import optimus.prime.rsa.main.StaticConfiguration;
@@ -17,18 +15,17 @@ import java.util.concurrent.*;
 public class Slave implements Runnable {
     private Socket socket;
     private ObjectOutputStream objectOutputStream;
-    private Receiver receiver;
     private Thread receiveThread;
 
     private final NetworkConfiguration networkConfig;
-    private final List<BigInteger> primes;
+    private List<BigInteger> primes;
     private Queue<SlicePayload> currentMinorSlices;
+    private String pubKeyRsa;
 
     private boolean running = true;
 
-    public Slave(NetworkConfiguration networkConfig, List<BigInteger> primes) {
+    public Slave(NetworkConfiguration networkConfig) {
         this.networkConfig = networkConfig;
-        this.primes = primes;
 
         try {
             this.socket = new Socket(
@@ -41,8 +38,8 @@ public class Slave implements Runnable {
             ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
             OutputStream outputStream = this.socket.getOutputStream();
             this.objectOutputStream = new ObjectOutputStream(outputStream);
-            this.receiver = new Receiver(objectInputStream);
-            this.receiveThread = new Thread(this.receiver);
+            Receiver receiver = new Receiver(objectInputStream);
+            this.receiveThread = new Thread(receiver);
             this.receiveThread.start();
             System.out.println("Slave  - started receiveThread");
         } catch (IOException e) {
@@ -78,7 +75,8 @@ public class Slave implements Runnable {
                 while (!this.currentMinorSlices.isEmpty()) {
                     cs.submit(new Worker(
                             this.currentMinorSlices.remove(),
-                            this.primes
+                            this.primes,
+                            this.getPubKeyRsa()
                     ));
                 }
 
@@ -128,6 +126,18 @@ public class Slave implements Runnable {
         this.currentMinorSlices = Utils.getNSlices(majorSlice.getStart(), majorSlice.getEnd(), StaticConfiguration.SLAVE_WORKERS);
     }
 
+    private synchronized void setPrimes(List<BigInteger> primes) {
+        this.primes = primes;
+    }
+
+    private synchronized void setPubKeyRsa(String pubKeyRsa) {
+        this.pubKeyRsa = pubKeyRsa;
+    }
+
+    private synchronized String getPubKeyRsa() {
+        return this.pubKeyRsa;
+    }
+
     private void stopSlave() {
         System.out.println("Slave  - sending SLAVE_EXIT_ACKNOWLEDGE");
         Message m = new Message(MessageType.SLAVE_EXIT_ACKNOWLEDGE);
@@ -175,9 +185,11 @@ public class Slave implements Runnable {
             for (Message m : messages.getAllMessages()) {
                 switch (m.getType()) {
                     case MASTER_HOSTS_LIST -> this.handleHostList(m);
-                    case MASTER_DO_WORK -> this.handleNewWork(m);
+                    case MASTER_DO_WORK -> this.handleDoWork(m);
                     case MASTER_EXIT -> this.stopReceiver();
-                    default -> System.out.println("I do not know what to do");
+                    case MASTER_SEND_PRIMES -> this.handleMasterSendPrimes(m);
+                    case MASTER_SEND_PUB_KEY_RSA -> this.handleMasterSendPubKeyRsa(m);
+                    default -> System.out.println("Slave  - Receiver - Unknown message type");
                 }
             }
         }
@@ -188,7 +200,7 @@ public class Slave implements Runnable {
             System.out.println("Slave  - Receiver - Received new host list");
         }
 
-        private void handleNewWork(Message m) {
+        private void handleDoWork(Message m) {
             SlicePayload slicePayload = (SlicePayload) m.getPayload();
             setCurrentSlice(slicePayload);
             System.out.println("Slave  - Receiver - Received new working package");
@@ -199,6 +211,18 @@ public class Slave implements Runnable {
             System.out.println("Slave  - Receiver - stopping receiver");
             this.running = false;
             stopSlave();
+        }
+
+        private void handleMasterSendPrimes(Message m) {
+            PrimesPayload primesPayload = (PrimesPayload) m.getPayload();
+            setPrimes(primesPayload.getPrimes());
+            System.out.println("Slave  - Receiver - set primes");
+        }
+
+        private void handleMasterSendPubKeyRsa(Message m) {
+            PubKeyRsaPayload pubKeyRsaPayload = (PubKeyRsaPayload) m.getPayload();
+            setPubKeyRsa(pubKeyRsaPayload.getPubKeyRsa());
+            System.out.println("Slave  - Receiver - set public key to \"" + pubKeyRsaPayload.getPubKeyRsa() + "\"");
         }
     }
 }

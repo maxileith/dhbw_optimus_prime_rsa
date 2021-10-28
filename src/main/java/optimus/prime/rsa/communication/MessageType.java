@@ -5,7 +5,6 @@ public enum MessageType {
     every type of message sent by a slave has prefix "SLAVE"
     every type of message sent by the master has the prefix "MASTER"
      */
-    SELECT_MASTER,
     SLAVE_JOIN,
     SLAVE_FINISHED_WORK,
     MASTER_HOSTS_LIST,
@@ -13,5 +12,6 @@ public enum MessageType {
     MASTER_DO_WORK,
     MASTER_EXIT,
     SLAVE_EXIT_ACKNOWLEDGE,
-    CONNECTION_LOST
+    MASTER_SEND_PRIMES,
+    MASTER_SEND_PUB_KEY_RSA
 }

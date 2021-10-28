@@ -1,25 +1,22 @@
 package optimus.prime.rsa.communication.payloads;
 
 import java.io.Serializable;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PrimesPayload implements Serializable {
-    private List<Integer> primes;
+    private final List<BigInteger> primes;
 
     public PrimesPayload() {
-        this.primes = new ArrayList<Integer>();
+        this.primes = new ArrayList<BigInteger>();
     }
 
-    public PrimesPayload(List<Integer> primes) {
+    public PrimesPayload(List<BigInteger> primes) {
         this.primes = primes;
     }
 
-    public void setPrimes(List<Integer> primes) {
-        this.primes = primes;
-    }
-
-    public List<Integer> getPrimes() {
+    public List<BigInteger> getPrimes() {
         return this.primes;
     }
 }
