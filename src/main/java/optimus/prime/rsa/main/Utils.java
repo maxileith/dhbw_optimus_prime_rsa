@@ -47,6 +47,7 @@ public class Utils {
             }
         } catch (IOException e) {
             System.out.println("Couldn't load primes - " + e);
+            System.exit(1);
         }
 
         return primes;
