@@ -30,7 +30,7 @@ public class Utils {
     public static List<BigInteger> getPrimes() {
         List<BigInteger> primes = new ArrayList<>();
 
-        final String fileName = "primes10000_mod.txt";
+        final String fileName = "primes10000_mod2.txt";
         final InputStream stream = Main.class.getClassLoader().getResourceAsStream(fileName);
 
         if (stream == null) {
