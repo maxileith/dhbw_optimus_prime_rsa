@@ -5,7 +5,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MultiMessage implements Serializable {
+class MultiMessage implements Serializable {
 
     private final List<Message> messages;
 
@@ -13,10 +13,6 @@ public class MultiMessage implements Serializable {
 
     public MultiMessage() {
         this.messages = new ArrayList<>();
-    }
-
-    public MultiMessage(List<Message> messages) {
-        this.messages = messages;
     }
 
     public void addMessage(Message m) {

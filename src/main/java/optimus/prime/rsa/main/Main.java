@@ -5,10 +5,8 @@ import optimus.prime.rsa.argumentparser.ArgumentBlueprint;
 import optimus.prime.rsa.communication.Master;
 import optimus.prime.rsa.communication.Slave;
 
-import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.List;
 
 public class Main {
 

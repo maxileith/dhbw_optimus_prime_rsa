@@ -95,7 +95,7 @@ public class Slave implements Runnable {
                             System.out.println("Slave  - worker found a solution! " + s);
                         }
                     } catch (ExecutionException e) { // FIXME: macht das sinn?
-                        System.err.println("Slave - Error in Worker: ");
+                        System.err.println("Slave  - Error in Worker: ");
                         e.printStackTrace();
                         this.running = false;
                     }
@@ -181,7 +181,7 @@ public class Slave implements Runnable {
         }
 
         private void handleMessages(MultiMessage messages) {
-            System.out.println("Slave - ConnectionHandler - Received MultiMessage");
+            System.out.println("Slave  - ConnectionHandler - Received MultiMessage");
             for (Message m : messages.getAllMessages()) {
                 switch (m.getType()) {
                     case MASTER_HOSTS_LIST -> this.handleHostList(m);

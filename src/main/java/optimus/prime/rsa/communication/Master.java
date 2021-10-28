@@ -16,6 +16,9 @@ public class Master implements Runnable {
 
     private ServerSocket serverSocket;
     private final List<Thread> connectionHandlerThreads = new ArrayList<>();
+    private final Map<InetAddress, SyncedObjectOutputStream> outputStreamsForBroadcasting = new HashMap<>();
+    private final Broadcaster broadcaster;
+    private final Thread broadcasterThread;
 
     private final NetworkConfiguration networkConfig;
     private final List<BigInteger> primes;
@@ -26,6 +29,9 @@ public class Master implements Runnable {
     private SolutionPayload solution = null;
 
     public Master(NetworkConfiguration networkConfig) {
+        this.broadcaster = new Broadcaster(this.outputStreamsForBroadcasting);
+        this.broadcasterThread = new Thread(this.broadcaster);
+
         this.networkConfig = networkConfig;
         this.primes = Utils.getPrimes();
 
@@ -47,6 +53,9 @@ public class Master implements Runnable {
 
     @Override
     public void run() {
+        System.out.println("Master - starting broadcaster ...");
+        this.broadcasterThread.start();
+
         try {
             System.out.println("Master - beginning to distribute connections ...");
             this.distributeConnections();
@@ -101,6 +110,10 @@ public class Master implements Runnable {
         return this.primes;
     }
 
+    private synchronized Map<InetAddress, SyncedObjectOutputStream> getOutputStreamsForBroadcasting() {
+        return this.outputStreamsForBroadcasting;
+    }
+
     private void stop() {
         System.out.println("Master - waiting for ConnectionHandlers to terminate ...");
         this.connectionHandlerThreads.forEach(t -> {
@@ -110,6 +123,15 @@ public class Master implements Runnable {
                 System.err.println("Master - error while waiting for the ConnectionHandlers to terminate - " + e);
             }
         });
+
+        System.out.println("Master - sending stop signal to broadcaster ...");
+        this.broadcaster.stop();
+        System.out.println("Master - waiting for Broadcaster to terminate ...");
+        try {
+            this.broadcasterThread.join();
+        } catch (InterruptedException e) {
+            System.err.println("Master - error while waiting for the Broadcaster to terminate - " + e);
+        }
 
         try {
             this.serverSocket.close();
@@ -138,18 +160,20 @@ public class Master implements Runnable {
             System.out.println("Master - ConnectionHandler - " + this.slave + " - Starting ConnectionHandler");
             try (
                     OutputStream outputStream = this.slave.getOutputStream();
-                    ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
+                    SyncedObjectOutputStream objectOutputStream = new SyncedObjectOutputStream(outputStream);
                     InputStream inputStream = this.slave.getInputStream();
                     ObjectInputStream objectInputStream = new ObjectInputStream(inputStream)
             ) {
+                // add to output streams for broadcasting
+                getOutputStreamsForBroadcasting().put(this.slave.getInetAddress(), objectOutputStream);
+                // main loop to receive messages
                 while (this.running) {
                     System.out.println("Master - ConnectionHandler - " + this.slave + " - waiting for message to be received ...");
                     Message message = (Message) objectInputStream.readObject();
                     final MultiMessage response = this.handleMessage(message);
 
                     if (response != null) {
-                        objectOutputStream.writeObject(response);
-                        objectOutputStream.flush();
+                        objectOutputStream.writeSyncedObjectFlush(response);
                     }
                 }
             } catch (IOException e) {
@@ -161,6 +185,8 @@ public class Master implements Runnable {
                 }
             } catch (ClassNotFoundException e) {
                 System.err.println("Master - ConnectionHandler - Class of incoming object unknown - " + e);
+            } finally {
+                getOutputStreamsForBroadcasting().remove(this.slave.getInetAddress());
             }
 
             System.out.println("Master - ConnectionHandler - Terminated");
@@ -229,13 +255,13 @@ public class Master implements Runnable {
                 System.out.println("Master - ConnectionHandler - " + this.slave + " - Sending new slice to slave: " + this.currentSlice);
                 Message sliceMessage = new Message(MessageType.MASTER_DO_WORK, this.currentSlice);
                 response.addMessage(sliceMessage);
+                return response;
             } catch (NoSuchElementException ignored) {
-                System.out.println("Master - ConnectionHandler - " + this.slave + " - No more slices to do -> sending MASTER_EXIT to Slave");
+                System.out.println("Master - ConnectionHandler - " + this.slave + " - No more slices to do -> sending MASTER_EXIT to Broadcaster");
                 Message exitMessage = new Message(MessageType.MASTER_EXIT);
-                response.addMessage(exitMessage);
+                broadcaster.send(exitMessage);
             }
-
-            return response;
+            return null;
         }
 
         private MultiMessage handleSolutionFound(Message m) {
@@ -245,11 +271,11 @@ public class Master implements Runnable {
             SolutionPayload solution = (SolutionPayload) m.getPayload();
             markAsSolved(solution);
 
-            // TODO: MASTER_EXIT an alle senden
-            MultiMessage response = new MultiMessage();
-            response.addMessage(new Message(MessageType.MASTER_EXIT));
+            System.out.println("Master - ConnectionHandler - " + this.slave + " - No more slices to do -> sending MASTER_EXIT to Broadcaster");
+            Message exitMessage = new Message(MessageType.MASTER_EXIT);
+            broadcaster.send(exitMessage);
 
-            return response;
+            return null;
         }
 
         private MultiMessage handleExitAcknowledge() {
@@ -263,4 +289,51 @@ public class Master implements Runnable {
         }
     }
 
+    private static class Broadcaster implements Runnable {
+
+        private final Map<InetAddress, SyncedObjectOutputStream> streams;
+        private final Queue<Message> queue = new LinkedList<>();
+        private boolean running = true;
+
+        public Broadcaster(Map<InetAddress, SyncedObjectOutputStream> streams) {
+            this.streams = streams;
+        }
+
+        @Override
+        public void run() {
+            while (this.running) {
+                if (this.queue.isEmpty()) {
+                    try {
+                        Thread.sleep(5);
+                    } catch (InterruptedException e) {
+                        System.out.println("Master - Broadcaster - Error while sleeping - " + e);
+                    }
+                    continue;
+                }
+
+                MultiMessage mm = new MultiMessage();
+                while (!this.queue.isEmpty()) {
+                    Message m = this.queue.remove();
+                    System.out.println("Master - Broadcaster - broadcasting message of type: " + m.getType());
+                    mm.addMessage(m);
+                }
+                for (InetAddress i : this.streams.keySet()) {
+                    try {
+                        this.streams.get(i).writeSyncedObjectFlush(mm);
+                    } catch (IOException e) {
+                        System.out.println("Master - Broadcaster - Failed to send to " + this.streams.get(i) + " - " + e);
+                    }
+                }
+            }
+        }
+
+        public synchronized void send(Message m) {
+            System.out.println("Master - Broadcaster - queued message of type: " + m.getType());
+            this.queue.add(m);
+        }
+
+        public void stop() {
+            this.running = false;
+        }
+    }
 }

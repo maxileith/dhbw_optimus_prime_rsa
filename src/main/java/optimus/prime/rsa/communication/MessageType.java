@@ -1,6 +1,6 @@
 package optimus.prime.rsa.communication;
 
-public enum MessageType {
+enum MessageType {
     /*
     every type of message sent by a slave has prefix "SLAVE"
     every type of message sent by the master has the prefix "MASTER"
