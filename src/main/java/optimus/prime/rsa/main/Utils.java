@@ -31,7 +31,8 @@ public class Utils {
     public static List<BigInteger> getPrimes() {
         List<BigInteger> primes = new ArrayList<>();
 
-        final String fileName = "primes100.txt";
+        // TODO: don't hardcode the primes file
+        final String fileName = "primes1000.txt";
         final InputStream stream = Main.class.getClassLoader().getResourceAsStream(fileName);
 
         if (stream == null) {
