@@ -42,6 +42,8 @@ public class Master implements Runnable {
             MasterConfiguration.slicesToDo = Utils.getSlices(0, MasterConfiguration.primes.size() - 1, MasterConfiguration.MASTER_SLICE_SIZE);
         }
         log("Master - slices: " + MasterConfiguration.slicesToDo);
+        log("Master - cipher: " + MasterConfiguration.CIPHER);
+        log("Master - public key: " + MasterConfiguration.PUB_RSA_KEY);
 
         try {
             this.serverSocket = new ServerSocket(

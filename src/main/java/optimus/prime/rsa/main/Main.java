@@ -103,7 +103,11 @@ public class Main {
         // workers key
         StaticConfiguration.SLAVE_WORKERS = Integer.parseInt(ap.get("workers"));
         // pub-rsa-key key
-        MasterConfiguration.PUB_RSA_KEY = new BigInteger(ap.get("pub-rsa-key"));
+        try {
+            MasterConfiguration.PUB_RSA_KEY = new BigInteger(ap.get("pub-rsa-key"));
+        } catch (NumberFormatException ignored) {
+            MasterConfiguration.PUB_RSA_KEY = BigInteger.ZERO;
+        }
         // cipher key
         MasterConfiguration.CIPHER = ap.get("cipher");
         // master-slice-size key
