@@ -85,7 +85,7 @@ public class Main {
         ap.load(args);
 
         // master key
-        boolean isMaster = ap.get("master").equals("true");
+        MasterConfiguration.isMaster = ap.get("master").equals("true");
 
         // master-address key
         InetAddress masterAddress = null;
@@ -103,7 +103,7 @@ public class Main {
         // workers key
         StaticConfiguration.SLAVE_WORKERS = Integer.parseInt(ap.get("workers"));
 
-        if (isMaster) {
+        if (MasterConfiguration.isMaster) {
             // pub-rsa-key key
             MasterConfiguration.PUB_RSA_KEY = new BigInteger(ap.get("pub-rsa-key"));
             // cipher key
@@ -116,7 +116,7 @@ public class Main {
 
         // Start master if not slave
         Thread masterThread = null;
-        if (isMaster) {
+        if (MasterConfiguration.isMaster) {
             Master master = new Master();
             masterThread = new Thread(master);
             masterThread.start();

@@ -1,6 +1,7 @@
 package optimus.prime.rsa.communication;
 
 import optimus.prime.rsa.communication.payloads.*;
+import optimus.prime.rsa.config.MasterConfiguration;
 import optimus.prime.rsa.crypto.Worker;
 import optimus.prime.rsa.config.NetworkConfiguration;
 import optimus.prime.rsa.config.StaticConfiguration;
@@ -234,13 +235,17 @@ public class Slave implements Runnable {
         private void handleUnfinishedSlicesUpdate(Message m) {
             UnfinishedSlicesPayload unfinishedSlicesPayload = (UnfinishedSlicesPayload) m.getPayload();
             log("Slave  - Receiver - received update of unfinished work");
-            // FIXME: do something with that
+            if (!MasterConfiguration.isMaster) {
+                MasterConfiguration.slicesToDo = unfinishedSlicesPayload.getUnfinishedSlices();
+            }
         }
 
         private void handleCipher(Message m) {
             CipherPayload cipherPayload = (CipherPayload) m.getPayload();
             log("Slave  - Receiver - received cipher: \"" + cipherPayload.getCipher() + "\"");
-            // FIXME: do something with that
+            if (!MasterConfiguration.isMaster) {
+                MasterConfiguration.CIPHER = cipherPayload.getCipher();
+            }
         }
     }
 }

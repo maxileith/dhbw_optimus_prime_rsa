@@ -23,8 +23,6 @@ public class Master implements Runnable {
     private final Thread broadcasterThread;
 
     private final List<BigInteger> primes;
-
-    private final Queue<SlicePayload> slicesToDo;
     private final List<SlicePayload> slicesInProgress = new LinkedList<>();
 
     private SolutionPayload solution = null;
@@ -35,7 +33,7 @@ public class Master implements Runnable {
 
         this.primes = Utils.getPrimes();
 
-        this.slicesToDo = Utils.getSlices(0, this.primes.size() - 1, MasterConfiguration.MASTER_SLICE_SIZE);
+        MasterConfiguration.slicesToDo = Utils.getSlices(0, this.primes.size() - 1, MasterConfiguration.MASTER_SLICE_SIZE);
 
         try {
             this.serverSocket = new ServerSocket(
@@ -75,7 +73,7 @@ public class Master implements Runnable {
     }
 
     private void distributeConnections() throws IOException {
-        while (!this.serverSocket.isClosed() && this.solution == null && (!this.slicesToDo.isEmpty() || !this.slicesInProgress.isEmpty())) {
+        while (!this.serverSocket.isClosed() && this.solution == null && (!MasterConfiguration.slicesToDo.isEmpty() || !this.slicesInProgress.isEmpty())) {
             try {
                 Socket slave = this.serverSocket.accept();
                 log("Master - Connection from " + slave + " established.");
@@ -88,6 +86,8 @@ public class Master implements Runnable {
                 this.connectionHandlerThreads.add(thread);
             } catch (SocketTimeoutException ignored) {
             }
+            //System.out.println(this.slicesToDo);
+            //System.out.println(this.slicesInProgress);
         }
         log("Master - Stopping ConnectionHandlers");
     }
@@ -102,7 +102,7 @@ public class Master implements Runnable {
     }
 
     private synchronized SlicePayload getNextSlice() throws NoSuchElementException {
-        SlicePayload slice = this.slicesToDo.remove();
+        SlicePayload slice = MasterConfiguration.slicesToDo.remove();
         // transfer index from ToDo to InProgress
         this.slicesInProgress.add(slice);
         return slice;
@@ -116,7 +116,7 @@ public class Master implements Runnable {
     private synchronized void abortSlice(SlicePayload slice) {
         log("Master - Slice " + slice + " added back to queue");
         this.slicesInProgress.remove(slice);
-        this.slicesToDo.add(slice);
+        MasterConfiguration.slicesToDo.add(slice);
     }
 
     private synchronized List<BigInteger> getPrimes() {
@@ -124,7 +124,7 @@ public class Master implements Runnable {
     }
 
     private Queue<SlicePayload> getUnfinishedSlices() {
-        final Queue<SlicePayload> unfinishedSlices = new LinkedList<>(this.slicesToDo);
+        final Queue<SlicePayload> unfinishedSlices = new LinkedList<>(MasterConfiguration.slicesToDo);
         unfinishedSlices.addAll(this.slicesInProgress);
         return unfinishedSlices;
     }
