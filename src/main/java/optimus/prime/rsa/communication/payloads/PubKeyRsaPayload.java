@@ -1,15 +1,16 @@
 package optimus.prime.rsa.communication.payloads;
 
 import java.io.Serializable;
+import java.math.BigInteger;
 
 public class PubKeyRsaPayload implements Serializable {
-    private final String pubKeyRsa;
+    private final BigInteger pubKeyRsa;
 
-    public PubKeyRsaPayload(String pubKeyRsa) {
+    public PubKeyRsaPayload(BigInteger pubKeyRsa) {
         this.pubKeyRsa = pubKeyRsa;
     }
 
-    public String getPubKeyRsa() {
+    public BigInteger getPubKeyRsa() {
         return this.pubKeyRsa;
     }
 }

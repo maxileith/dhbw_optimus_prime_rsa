@@ -8,6 +8,7 @@ import optimus.prime.rsa.config.MasterConfiguration;
 import optimus.prime.rsa.config.NetworkConfiguration;
 import optimus.prime.rsa.config.StaticConfiguration;
 
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
@@ -104,7 +105,7 @@ public class Main {
 
         if (isMaster) {
             // pub-rsa-key key
-            MasterConfiguration.PUB_RSA_KEY = ap.get("pub-rsa-key");
+            MasterConfiguration.PUB_RSA_KEY = new BigInteger(ap.get("pub-rsa-key"));
             // cipher key
             MasterConfiguration.CIPHER = ap.get("cipher");
             // master-slice-size key
