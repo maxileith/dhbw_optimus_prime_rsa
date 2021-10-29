@@ -150,6 +150,7 @@ public class Main {
                 }
             } catch (InterruptedException e) {
                 System.err.println("Main   - failed to join threads - " + e);
+                return;
             }
         } while (DO_RESTART);
     }
