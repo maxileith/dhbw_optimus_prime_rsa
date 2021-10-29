@@ -15,7 +15,7 @@ import java.net.UnknownHostException;
 
 public class Main {
 
-    private static boolean DO_RESTART = false;
+    private static boolean DO_RESTART;
 
     public static void main(String[] args) {
 
@@ -129,7 +129,7 @@ public class Main {
                 masterThread = new Thread(master);
                 masterThread.start();
 
-                System.out.println("Main   - To join a slave use arguments " + ConsoleColors.RED_BACKGROUND + "--master-add " + NetworkConfiguration.masterAddress + ConsoleColors.RESET);
+                System.out.println("Main   - To join a slave use arguments " + ConsoleColors.RED_UNDERLINED + "--master-address " + NetworkConfiguration.masterAddress + ConsoleColors.RESET);
             }
 
             Thread slaveThread = null;
