@@ -36,17 +36,17 @@ public class Worker implements Callable<SolutionPayload> {
             // TODO: Optimierung in der Dokumentation berücksichtigen
             // Check for interrupt here; 7000 primes in list; solution at ~5600; time -> 1m42s
             // Faster interrupts, no performance difference when checking for interrupts here
-            for (int b = a + 1; b < this.primes.size() && !Thread.currentThread().isInterrupted(); b++) {
+            for (int b = a + 1; b < this.primes.size(); b++) {
+                if (Thread.currentThread().isInterrupted()) {
+                    System.out.println(LOG_INTERRUPTED);
+                    return SolutionPayload.NO_SOLUTION;
+                }
                 BigInteger bInt = this.primes.get(b);
                 if (this.rsaHelper.isValid(aInt, bInt, this.pubRsaKey)) { // TODO: Verify whether correct positioning
                     System.out.printf((LOG_MESSAGE_SOLUTION_FOUND) + "%n", this.slice, aInt, bInt);
                     return new SolutionPayload(aInt, bInt);
                 }
             }
-        }
-
-        if (Thread.currentThread().isInterrupted()) {
-            System.out.println(LOG_INTERRUPTED);
         }
 
         System.out.printf((LOG_MESSAGE_NO_SOLUTION) + "%n", this.slice);
