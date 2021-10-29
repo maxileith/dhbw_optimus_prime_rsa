@@ -1,6 +1,7 @@
 package optimus.prime.rsa.main;
 
 
+@SuppressWarnings("unused")
 public class Colors {
 
     public static final String RESET = (char)27 + "[0m";
