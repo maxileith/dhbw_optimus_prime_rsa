@@ -35,7 +35,7 @@ public class Utils {
         List<BigInteger> primes = new ArrayList<>();
 
         // TODO: don't hardcode the primes file
-        final String fileName = "primes7000.txt";
+        final String fileName = "primes1000.txt";
         final InputStream stream = Main.class.getClassLoader().getResourceAsStream(fileName);
 
         // stream could be null: catching NullPointerException

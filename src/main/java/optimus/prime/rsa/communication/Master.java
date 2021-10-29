@@ -22,7 +22,6 @@ public class Master implements Runnable {
     private final Broadcaster broadcaster;
     private final Thread broadcasterThread;
 
-    private final List<BigInteger> primes;
     private final List<SlicePayload> slicesInProgress = new LinkedList<>();
 
     private SolutionPayload solution = null;
@@ -31,9 +30,17 @@ public class Master implements Runnable {
         this.broadcaster = new Broadcaster();
         this.broadcasterThread = new Thread(this.broadcaster);
 
-        this.primes = Utils.getPrimes();
-
-        MasterConfiguration.slicesToDo = Utils.getSlices(0, this.primes.size() - 1, MasterConfiguration.MASTER_SLICE_SIZE);
+        // only load primes if there are not already primes in the
+        // master configuration. this is important, since on a host
+        // that was a slave before, the primes that were received
+        // by the slave have to be used in the future.
+        if (MasterConfiguration.primes == null) {
+            MasterConfiguration.primes = Utils.getPrimes();
+        }
+        // same reason as for the primes above
+        if (MasterConfiguration.slicesToDo == null) {
+            MasterConfiguration.slicesToDo = Utils.getSlices(0, MasterConfiguration.primes.size() - 1, MasterConfiguration.MASTER_SLICE_SIZE);
+        }
 
         try {
             this.serverSocket = new ServerSocket(
@@ -118,7 +125,7 @@ public class Master implements Runnable {
     }
 
     private synchronized List<BigInteger> getPrimes() {
-        return this.primes;
+        return MasterConfiguration.primes;
     }
 
     private Queue<SlicePayload> getUnfinishedSlices() {

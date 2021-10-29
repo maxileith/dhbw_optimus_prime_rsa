@@ -4,8 +4,8 @@ public class ExampleApplication {
 
     public static void main(String[] args) {
         RSAHelper helper = new RSAHelper();
-        String p = "17594063653378370033"; // the prime 'p' to check, we can brute force and iterate throught the values
-        String q = "15251864654563933379"; // the prime 'q' to check, we can brute force and iterate throught the values
+        String p = "17594063653378370033"; // the prime 'p' to check, we can brute force and iterate through the values
+        String q = "15251864654563933379"; // the prime 'q' to check, we can brute force and iterate through the values
         String publicKey = "268342277565109549360836262560222031507"; // the given public key
         String cipher = "2d80afa14a65a7bf26636f97c89b43d5";
 
