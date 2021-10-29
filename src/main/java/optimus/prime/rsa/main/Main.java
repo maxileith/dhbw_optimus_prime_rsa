@@ -10,6 +10,7 @@ import optimus.prime.rsa.config.StaticConfiguration;
 
 import java.math.BigInteger;
 import java.net.InetAddress;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 
 public class Main {
@@ -19,18 +20,10 @@ public class Main {
         ArgumentParser ap = new ArgumentParser();
         ap.addArgument(
                 new ArgumentBlueprint(
-                        "master",
-                        false,
-                        "defines if this host is the master (true / false)",
-                        "false"
-                )
-        );
-        ap.addArgument(
-                new ArgumentBlueprint(
                         "master-address",
                         false,
                         "defines the ip-address of the current master",
-                        "127.0.0.1"
+                        "localhost"
                 )
         );
         ap.addArgument(
@@ -54,7 +47,7 @@ public class Main {
                         "workers",
                         false,
                         "defines the number of the threads that are used to crack the key",
-                        "7"
+                        Integer.toString(Math.max(Runtime.getRuntime().availableProcessors() - 1, 1))
                 )
         );
         ap.addArgument(
@@ -84,18 +77,26 @@ public class Main {
 
         ap.load(args);
 
-        // master key
-        MasterConfiguration.isMaster = ap.get("master").equals("true");
+        // load all ip addresses the host listens to
+        try {
+            NetworkConfiguration.ownAddresses = Utils.getOwnIPs();
+            System.out.println("Main   - own ips: " + NetworkConfiguration.ownAddresses);
+        } catch (SocketException e) {
+            System.err.println("Main   - unable to load own ips - " + e);
+            System.exit(1);
+        }
 
         // master-address key
         InetAddress masterAddress = null;
         try {
             masterAddress = InetAddress.getByName(ap.get("master-address"));
         } catch (UnknownHostException ignored) {
-            System.err.println(ap.get("master-address") + " is not a valid hostname / ip-address");
+            System.err.println("Main   - " + ap.get("master-address") + " is not a valid hostname / ip-address");
             System.exit(0);
         }
         NetworkConfiguration.masterAddress = masterAddress;
+
+        MasterConfiguration.isMaster = NetworkConfiguration.ownAddresses.contains(masterAddress);
 
         // port key
         StaticConfiguration.PORT = Integer.parseInt(ap.get("port"));
@@ -121,7 +122,7 @@ public class Main {
             masterThread = new Thread(master);
             masterThread.start();
 
-            System.out.println("To join a slave use -m " + NetworkConfiguration.masterAddress);
+            System.out.println("Main   - To join a slave use arguments " + ConsoleColors.RED_BACKGROUND + "--master-add " + NetworkConfiguration.masterAddress + ConsoleColors.RESET);
         }
 
         Slave slave = new Slave();
@@ -137,6 +138,6 @@ public class Main {
             System.err.println("Main   - failed to join threads - " + e);
         }
 
-        System.out.println("Bye :)");
+        System.out.println("Main   - Bye :)");
     }
 }

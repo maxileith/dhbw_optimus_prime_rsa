@@ -86,14 +86,12 @@ public class Master implements Runnable {
                 this.connectionHandlerThreads.add(thread);
             } catch (SocketTimeoutException ignored) {
             }
-            //System.out.println(this.slicesToDo);
-            //System.out.println(this.slicesInProgress);
         }
         log("Master - Stopping ConnectionHandlers");
     }
 
     private static void log(String s) {
-        System.out.println(Colors.BRIGHT_BLUE + s + Colors.RESET);
+        System.out.println(ConsoleColors.BLUE_BRIGHT + s + ConsoleColors.RESET);
     }
 
     private synchronized void markAsSolved(SolutionPayload s) {
@@ -297,6 +295,7 @@ public class Master implements Runnable {
             return response;
         }
 
+        @SuppressWarnings("SameReturnValue")
         private MultiMessage handleSolutionFound(Message m) {
             log("Master - ConnectionHandler - " + this.slave + " - Found solution");
 
@@ -311,6 +310,7 @@ public class Master implements Runnable {
             return null;
         }
 
+        @SuppressWarnings("SameReturnValue")
         private MultiMessage handleExitAcknowledge() {
             log("Master - ConnectionHandler - " + this.slave + " - Slave acknowledged exit");
             this.running = false;
@@ -322,7 +322,7 @@ public class Master implements Runnable {
         }
 
         private static void log(String s) {
-            System.out.println(Colors.BRIGHT_GREEN + s + Colors.RESET);
+            System.out.println(ConsoleColors.GREEN_BRIGHT + s + ConsoleColors.RESET);
         }
     }
 
@@ -333,11 +333,11 @@ public class Master implements Runnable {
         private boolean running = true;
 
         @Override
-        @SuppressWarnings("BusyWait")
         public void run() {
             while (this.running) {
                 if (this.queue.isEmpty()) {
                     try {
+                        // noinspection BusyWait
                         Thread.sleep(5);
                     } catch (InterruptedException e) {
                         log("Master - Broadcaster - Error while waiting - " + e);
@@ -377,7 +377,7 @@ public class Master implements Runnable {
         }
 
         private static void log(String s) {
-            System.out.println(Colors.YELLOW + s + Colors.RESET);
+            System.out.println(ConsoleColors.YELLOW + s + ConsoleColors.RESET);
         }
 
         public void stop() {

@@ -7,4 +7,5 @@ import java.util.List;
 public class NetworkConfiguration {
     public static List<InetAddress> hosts = new ArrayList<>();
     public static InetAddress masterAddress;
+    public static List<InetAddress> ownAddresses;
 }

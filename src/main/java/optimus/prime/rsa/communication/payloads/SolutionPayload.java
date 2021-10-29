@@ -3,11 +3,12 @@ package optimus.prime.rsa.communication.payloads;
 import java.io.Serializable;
 import java.math.BigInteger;
 
+@SuppressWarnings("ClassCanBeRecord")
 public class SolutionPayload implements Serializable {
     private final BigInteger prime1;
     private final BigInteger prime2;
 
-    public static SolutionPayload NO_SOLUTION = new SolutionPayload(BigInteger.ZERO, BigInteger.ZERO);
+    public static final SolutionPayload NO_SOLUTION = new SolutionPayload(BigInteger.ZERO, BigInteger.ZERO);
 
     public SolutionPayload(BigInteger prime1, BigInteger prime2) {
         this.prime1 = prime1;

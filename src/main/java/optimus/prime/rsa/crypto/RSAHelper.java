@@ -56,8 +56,7 @@ public class RSAHelper {
         BigInteger P = new BigInteger(p);
         BigInteger Q = new BigInteger(q);
 
-        AsymmetricCipherKeyPair keyPair = ownGenerator.generateKeyPair(P, Q);
-        return keyPair;
+        return ownGenerator.generateKeyPair(P, Q);
     }
 
     /**
@@ -116,8 +115,6 @@ public class RSAHelper {
 
             return modulus.equals(modulusPublicKey);
         } catch (Exception e) {
-            //e.printStackTrace();
-            //System.err.println("ERROR: "+e.toString()); // this method floods the console, we don't need it here
             return false;
         }
 
@@ -144,7 +141,7 @@ public class RSAHelper {
                 if (i + len > messageBytes.length)
                     len = messageBytes.length - i;
 
-                byte[] hexEncodedCipher = new byte[0];
+                byte[] hexEncodedCipher;
 
                 hexEncodedCipher = e.processBlock(messageBytes, i, len);
 

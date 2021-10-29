@@ -4,6 +4,8 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static optimus.prime.rsa.argumentparser.ArgumentBlueprint.TABLE_FORMAT;
+
 public class ArgumentParser {
 
     private final Map<String, ArgumentBlueprint> map = new HashMap<>();
@@ -69,9 +71,9 @@ public class ArgumentParser {
     }
 
     private void help() {
-        System.out.printf("%-17s %-65s %-9s %-15s%n", "key", "description", "required", "default");
+        System.out.printf(TABLE_FORMAT, "key", "description", "required", "default");
         for (ArgumentBlueprint a : this.list) {
-            System.out.println(a);
+            System.out.print(a);
         }
         System.exit(0);
     }

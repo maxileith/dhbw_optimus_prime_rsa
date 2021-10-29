@@ -7,10 +7,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.util.*;
 
 public class Utils {
 
@@ -38,6 +38,8 @@ public class Utils {
         final String fileName = "primes7000.txt";
         final InputStream stream = Main.class.getClassLoader().getResourceAsStream(fileName);
 
+        // stream could be null: catching NullPointerException
+        // noinspection ConstantConditions
         try (BufferedReader br = new BufferedReader(new InputStreamReader(stream))) {
             String line;
             while ((line = br.readLine()) != null) {
@@ -50,5 +52,19 @@ public class Utils {
         }
 
         return primes;
+    }
+
+    public static List<InetAddress> getOwnIPs() throws SocketException {
+        final ArrayList<InetAddress> ips = new ArrayList<>();
+
+        Enumeration<NetworkInterface> interfaces;
+        interfaces = NetworkInterface.getNetworkInterfaces();
+
+        for (NetworkInterface networkInterface : Collections.list(interfaces)) {
+            Enumeration<InetAddress> networkInterfaceIPs = networkInterface.getInetAddresses();
+            ips.addAll(Collections.list(networkInterfaceIPs));
+        }
+
+        return ips;
     }
 }

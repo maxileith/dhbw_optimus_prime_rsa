@@ -3,6 +3,7 @@ package optimus.prime.rsa.communication.payloads;
 import java.io.Serializable;
 import java.util.Queue;
 
+@SuppressWarnings("ClassCanBeRecord")
 public class UnfinishedSlicesPayload implements Serializable {
     private final Queue<SlicePayload> unfinishedSlices;
 

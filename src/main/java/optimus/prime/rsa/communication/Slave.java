@@ -5,7 +5,7 @@ import optimus.prime.rsa.config.MasterConfiguration;
 import optimus.prime.rsa.crypto.Worker;
 import optimus.prime.rsa.config.NetworkConfiguration;
 import optimus.prime.rsa.config.StaticConfiguration;
-import optimus.prime.rsa.main.Colors;
+import optimus.prime.rsa.main.ConsoleColors;
 import optimus.prime.rsa.main.Utils;
 
 import java.io.*;
@@ -49,7 +49,6 @@ public class Slave implements Runnable {
     }
 
     @Override
-    @SuppressWarnings("BusyWait")
     public void run() {
         if (!this.running) {
             return;
@@ -68,6 +67,7 @@ public class Slave implements Runnable {
 
                 // wait for the slice queue to get filled
                 while ((this.currentMinorSlices == null || this.currentMinorSlices.isEmpty()) && !this.socket.isClosed()) {
+                    // noinspection BusyWait
                     Thread.sleep(5);
                 }
 
@@ -156,7 +156,7 @@ public class Slave implements Runnable {
     }
 
     private static void log(String s) {
-        System.out.println(Colors.BRIGHT_MAGENTA + s + Colors.RESET);
+        System.out.println(ConsoleColors.MAGENTA_BRIGHT + s + ConsoleColors.RESET);
     }
 
     private class Receiver implements Runnable {

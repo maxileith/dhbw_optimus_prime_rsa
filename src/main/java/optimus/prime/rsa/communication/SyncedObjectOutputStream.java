@@ -10,9 +10,6 @@ class SyncedObjectOutputStream extends ObjectOutputStream {
         super(out);
     }
 
-    protected SyncedObjectOutputStream() throws IOException, SecurityException {
-    }
-
     public synchronized void writeSyncedObjectFlush(Object obj) throws IOException{
         super.writeObject(obj);
         super.flush();

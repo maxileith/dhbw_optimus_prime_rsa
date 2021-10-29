@@ -8,7 +8,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 
 public class KeyGenerator {
@@ -18,7 +17,7 @@ public class KeyGenerator {
     /**
      * this method we use to generate our test keys
      */
-    public static void main(String[] args) throws NoSuchAlgorithmException, IOException {
+    public static void main(String[] args) throws IOException {
         RSAKeyPairGenerator ownGenerator
                 = new RSAKeyPairGenerator();
         ownGenerator.init(new RSAKeyGenerationParameters(
@@ -29,7 +28,10 @@ public class KeyGenerator {
 
         String path = "src/main/resources/primes10000.txt";
         File f = new File(path);
-        if (!f.exists()) f.createNewFile();
+        if (!f.exists()) {
+            // noinspection ResultOfMethodCallIgnored
+            f.createNewFile();
+        }
         BufferedWriter bw = new BufferedWriter(new FileWriter(f));
 
         for (long i = 0; i < MAX; i++) {

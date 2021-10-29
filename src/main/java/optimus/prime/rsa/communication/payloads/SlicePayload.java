@@ -2,6 +2,7 @@ package optimus.prime.rsa.communication.payloads;
 
 import java.io.Serializable;
 
+@SuppressWarnings("ClassCanBeRecord")
 public class SlicePayload implements Serializable {
     private final int start;
     private final int end;

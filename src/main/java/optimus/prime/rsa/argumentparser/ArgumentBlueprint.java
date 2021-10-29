@@ -7,6 +7,7 @@ public class ArgumentBlueprint {
     private final String key;
     private String defaultValue = null;
     private String value = null;
+    protected static final String TABLE_FORMAT = "%-17s %-80s %-9s %-15s\n";
 
     public ArgumentBlueprint(String key, boolean required, String description, String defaultValue) {
         this(key, required, description);
@@ -37,6 +38,6 @@ public class ArgumentBlueprint {
     }
 
     public String toString() {
-        return String.format("%-17s %-65s %-9s %-15s", this.key, this.description, this.required, this.defaultValue);
+        return String.format(TABLE_FORMAT, this.key, this.description, this.required, this.defaultValue);
     }
 }
