@@ -15,6 +15,8 @@ import java.net.UnknownHostException;
 
 public class Main {
 
+    private static boolean DO_RESTART = false;
+
     public static void main(String[] args) {
 
         ArgumentParser ap = new ArgumentParser();
@@ -96,52 +98,63 @@ public class Main {
         }
         NetworkConfiguration.masterAddress = masterAddress;
 
-        MasterConfiguration.isMaster = NetworkConfiguration.ownAddresses.contains(masterAddress);
-
         // port key
         StaticConfiguration.PORT = Integer.parseInt(ap.get("port"));
-
         // workers key
         StaticConfiguration.SLAVE_WORKERS = Integer.parseInt(ap.get("workers"));
+        // pub-rsa-key key
+        MasterConfiguration.PUB_RSA_KEY = new BigInteger(ap.get("pub-rsa-key"));
+        // cipher key
+        MasterConfiguration.CIPHER = ap.get("cipher");
+        // master-slice-size key
+        MasterConfiguration.MASTER_SLICE_SIZE = Integer.parseInt(ap.get("master-slice-size"));
+        // max-slaves key
+        MasterConfiguration.MAX_INCOMING_SLAVES = Integer.parseInt(ap.get("max-slaves"));
 
-        if (MasterConfiguration.isMaster) {
-            // pub-rsa-key key
-            MasterConfiguration.PUB_RSA_KEY = new BigInteger(ap.get("pub-rsa-key"));
-            // cipher key
-            MasterConfiguration.CIPHER = ap.get("cipher");
-            // master-slice-size key
-            MasterConfiguration.MASTER_SLICE_SIZE = Integer.parseInt(ap.get("master-slice-size"));
-            // max-slaves key
-            MasterConfiguration.MAX_INCOMING_SLAVES = Integer.parseInt(ap.get("max-slaves"));
-        }
-
-        // Start master if not slave
-        Thread masterThread = null;
-        if (MasterConfiguration.isMaster) {
-            Master master = new Master();
-            masterThread = new Thread(master);
-            masterThread.start();
-
-            System.out.println("Main   - To join a slave use arguments " + ConsoleColors.RED_BACKGROUND + "--master-add " + NetworkConfiguration.masterAddress + ConsoleColors.RESET);
-        }
-
-        Slave slave = new Slave();
-        Thread slaveThread = new Thread(slave);
-        if (StaticConfiguration.SLAVE_WORKERS != 0) {
-            slaveThread.start();
-        } else {
-            System.out.println("Main   - Creating no slave because workers are set to 0");
-        }
-
-        try {
-            slaveThread.join();
-            if (masterThread != null) {
-                masterThread.join();
-            }
-        } catch (InterruptedException e) {
-            System.err.println("Main   - failed to join threads - " + e);
-        }
+        loop();
 
         System.out.println("Main   - Bye :)");
+    }
+
+    private static void loop() {
+        do {
+            DO_RESTART = false;
+
+            MasterConfiguration.isMaster = NetworkConfiguration.ownAddresses.contains(NetworkConfiguration.masterAddress);
+
+            // Start master if not slave
+            Thread masterThread = null;
+            if (MasterConfiguration.isMaster) {
+                Master master = new Master();
+                masterThread = new Thread(master);
+                masterThread.start();
+
+                System.out.println("Main   - To join a slave use arguments " + ConsoleColors.RED_BACKGROUND + "--master-add " + NetworkConfiguration.masterAddress + ConsoleColors.RESET);
+            }
+
+            Thread slaveThread = null;
+            if (StaticConfiguration.SLAVE_WORKERS != 0) {
+                Slave slave = new Slave();
+                slaveThread = new Thread(slave);
+                slaveThread.start();
+            } else {
+                System.out.println("Main   - Creating no slave because workers are set to 0");
+            }
+
+            try {
+                if (slaveThread != null) {
+                    slaveThread.join();
+                }
+                if (masterThread != null) {
+                    masterThread.join();
+                }
+            } catch (InterruptedException e) {
+                System.err.println("Main   - failed to join threads - " + e);
+            }
+        } while (DO_RESTART);
+    }
+
+    public synchronized static void restart() {
+        DO_RESTART = true;
     }
 }
