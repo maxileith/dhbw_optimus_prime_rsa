@@ -15,7 +15,7 @@ import java.net.UnknownHostException;
 
 public class Main {
 
-    private static boolean DO_RESTART;
+    private static boolean LOST_MASTER = false;
 
     public static void main(String[] args) {
 
@@ -118,9 +118,31 @@ public class Main {
 
     private static void loop() {
         do {
-            DO_RESTART = false;
+
+            // update masterAddress if master is lost
+            if (LOST_MASTER) {
+                try {
+                    NetworkConfiguration.masterAddress = NetworkConfiguration.hosts.get(0);
+                } catch (IndexOutOfBoundsException e) {
+                    System.err.println("Main   - There are no known hosts left - " + e);
+                    return;
+                }
+            }
 
             MasterConfiguration.isMaster = NetworkConfiguration.ownAddresses.contains(NetworkConfiguration.masterAddress);
+            // give the new master some time to start
+            if (!MasterConfiguration.isMaster && LOST_MASTER) {
+                try {
+                    for (int i = 0; i < StaticConfiguration.MASTER_RESTART_TIMEOUT; i += 50) {
+                        // noinspection BusyWait
+                        Thread.sleep(50);
+                        System.out.print(".");
+                    }
+                    System.out.println();
+                } catch (InterruptedException e) {
+                    System.err.println("Main   - error while waiting for the MASTER_RESTART_TIMEOUT to expire - " + e);
+                }
+            }
 
             // Start master if not slave
             Thread masterThread = null;
@@ -141,6 +163,9 @@ public class Main {
                 System.out.println("Main   - Creating no slave because workers are set to 0");
             }
 
+            // start or restart done
+            LOST_MASTER = false;
+
             try {
                 if (slaveThread != null) {
                     slaveThread.join();
@@ -152,10 +177,10 @@ public class Main {
                 System.err.println("Main   - failed to join threads - " + e);
                 return;
             }
-        } while (DO_RESTART);
+        } while (LOST_MASTER);
     }
 
-    public synchronized static void restart() {
-        DO_RESTART = true;
+    public synchronized static void reportMasterLost() {
+        LOST_MASTER = true;
     }
 }
