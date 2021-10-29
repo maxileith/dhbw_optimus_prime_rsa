@@ -33,7 +33,7 @@ public class Main {
                         "master-checks-per-slice",
                         false,
                         "master-only: defines the number of checks per slice",
-                        "500000"
+                        "1000000"
                 )
         );
         ap.addArgument(
