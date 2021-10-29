@@ -4,6 +4,7 @@ import optimus.prime.rsa.communication.payloads.*;
 import optimus.prime.rsa.crypto.Worker;
 import optimus.prime.rsa.config.NetworkConfiguration;
 import optimus.prime.rsa.config.StaticConfiguration;
+import optimus.prime.rsa.main.Colors;
 import optimus.prime.rsa.main.Utils;
 
 import java.io.*;
@@ -32,7 +33,7 @@ public class Slave implements Runnable {
                     networkConfig.getMasterAddress(),
                     StaticConfiguration.PORT
             );
-            System.out.println("Slave  - established connection to master");
+            log("Slave  - established connection to master");
 
             InputStream inputStream = this.socket.getInputStream();
             ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
@@ -41,7 +42,7 @@ public class Slave implements Runnable {
             Receiver receiver = new Receiver(objectInputStream);
             this.receiveThread = new Thread(receiver);
             this.receiveThread.start();
-            System.out.println("Slave  - started receiveThread");
+            log("Slave  - started receiveThread");
         } catch (IOException e) {
             System.err.println("Slave  - The master is probably not reachable. " + e);
             this.running = false;
@@ -58,7 +59,7 @@ public class Slave implements Runnable {
             ExecutorService es = Executors.newFixedThreadPool(StaticConfiguration.SLAVE_WORKERS); //FIXME: change dynamic
             CompletionService<SolutionPayload> cs = new ExecutorCompletionService<>(es);
 
-            System.out.println("Slave  - Sending hello message to master");
+            log("Slave  - Sending hello message to master");
 
             Message joinMessage = new Message(MessageType.SLAVE_JOIN);
             this.objectOutputStream.writeObject(joinMessage);
@@ -71,7 +72,7 @@ public class Slave implements Runnable {
                     Thread.sleep(5);
                 }
 
-                System.out.println("Slave  - New work is assigned to the workers");
+                log("Slave  - New work is assigned to the workers");
                 // do the math
                 while (!this.currentMinorSlices.isEmpty()) {
                     cs.submit(new Worker(
@@ -86,14 +87,14 @@ public class Slave implements Runnable {
                     try {
                         Future<SolutionPayload> f = cs.take();
                         SolutionPayload s = f.get();
-                        System.out.println("Slave  - received new result from a worker");
+                        log("Slave  - received new result from a worker");
                         // Solution found
                         if (!s.equals(SolutionPayload.NO_SOLUTION)) {
                             Message m = new Message(MessageType.SLAVE_SOLUTION_FOUND, s);
                             this.objectOutputStream.writeObject(m);
                             this.objectOutputStream.flush();
                             this.running = false;
-                            System.out.println("Slave  - worker found a solution! " + s);
+                            log("Slave  - worker found a solution! " + s);
                         }
                     } catch (ExecutionException e) { // FIXME: macht das sinn?
                         System.err.println("Slave  - Error in Worker: ");
@@ -106,16 +107,16 @@ public class Slave implements Runnable {
                     Message m = new Message(MessageType.SLAVE_FINISHED_WORK);
                     this.objectOutputStream.writeObject(m);
                     this.objectOutputStream.flush();
-                    System.out.println("Slave  - finished work");
+                    log("Slave  - finished work");
                 }
             }
-            System.out.println("Slave  - stopped");
+            log("Slave  - stopped");
             es.shutdown();
 
             // wait for the receiver to terminate gracefully
             this.receiveThread.join();
 
-            System.out.println("Slave  - Thread terminated");
+            log("Slave  - Thread terminated");
 
             // TODO: Sender
         } catch (IOException | InterruptedException e) {
@@ -140,7 +141,7 @@ public class Slave implements Runnable {
     }
 
     private void stopSlave() {
-        System.out.println("Slave  - sending SLAVE_EXIT_ACKNOWLEDGE");
+        log("Slave  - sending SLAVE_EXIT_ACKNOWLEDGE");
         Message m = new Message(MessageType.SLAVE_EXIT_ACKNOWLEDGE);
         try {
             this.objectOutputStream.writeObject(m);
@@ -153,6 +154,10 @@ public class Slave implements Runnable {
         // because this method gets called by the receiver. so if joining
         // here the receiver is stuck waiting for itself.
         this.running = false;
+    }
+
+    private static void log(String s) {
+        System.out.println(Colors.BRIGHT_MAGENTA + s + Colors.RESET);
     }
 
     private class Receiver implements Runnable {
@@ -175,14 +180,14 @@ public class Slave implements Runnable {
                 if (this.running) {
                     System.err.println("Slave  - Receiver - failed to read incoming object - " + e);
                 } else {
-                    System.out.println("Slave  - Receiver - stopped on purpose");
+                    log("Slave  - Receiver - stopped on purpose");
                 }
             }
-            System.out.println("Slave  - Receiver - terminated");
+            log("Slave  - Receiver - terminated");
         }
 
         private void handleMessages(MultiMessage messages) {
-            System.out.println("Slave  - ConnectionHandler - Received MultiMessage");
+            log("Slave  - ConnectionHandler - Received MultiMessage");
             for (Message m : messages.getAllMessages()) {
                 switch (m.getType()) {
                     case MASTER_HOSTS_LIST -> this.handleHostList(m);
@@ -192,7 +197,7 @@ public class Slave implements Runnable {
                     case MASTER_SEND_PUB_KEY_RSA -> this.handleMasterSendPubKeyRsa(m);
                     case MASTER_UNFINISHED_SLICES -> this.handleUnfinishedSlicesUpdate(m);
                     case MASTER_CIPHER -> this.handleCipher(m);
-                    default -> System.out.println("Slave  - Receiver - Unknown message type");
+                    default -> log("Slave  - Receiver - Unknown message type");
                 }
             }
         }
@@ -200,18 +205,18 @@ public class Slave implements Runnable {
         private void handleHostList(Message m) {
             HostsPayload hostsPayload = (HostsPayload) m.getPayload();
             networkConfig.setHosts(hostsPayload.getHosts());
-            System.out.println("Slave  - Receiver - Received new host list");
+            log("Slave  - Receiver - Received new host list");
         }
 
         private void handleDoWork(Message m) {
             SlicePayload slicePayload = (SlicePayload) m.getPayload();
             setCurrentSlice(slicePayload);
-            System.out.println("Slave  - Receiver - Received new working package");
+            log("Slave  - Receiver - Received new working package");
         }
 
         public void stopReceiver() {
-            System.out.println("Slave  - Receiver - MASTER_EXIT");
-            System.out.println("Slave  - Receiver - stopping receiver");
+            log("Slave  - Receiver - MASTER_EXIT");
+            log("Slave  - Receiver - stopping receiver");
             this.running = false;
             stopSlave();
         }
@@ -219,24 +224,24 @@ public class Slave implements Runnable {
         private void handleMasterSendPrimes(Message m) {
             PrimesPayload primesPayload = (PrimesPayload) m.getPayload();
             setPrimes(primesPayload.getPrimes());
-            System.out.println("Slave  - Receiver - set primes");
+            log("Slave  - Receiver - set primes");
         }
 
         private void handleMasterSendPubKeyRsa(Message m) {
             PubKeyRsaPayload pubKeyRsaPayload = (PubKeyRsaPayload) m.getPayload();
             setPubKeyRsa(pubKeyRsaPayload.getPubKeyRsa());
-            System.out.println("Slave  - Receiver - set public key to \"" + pubKeyRsaPayload.getPubKeyRsa() + "\"");
+            log("Slave  - Receiver - set public key to \"" + pubKeyRsaPayload.getPubKeyRsa() + "\"");
         }
 
         private void handleUnfinishedSlicesUpdate(Message m) {
             UnfinishedSlicesPayload unfinishedSlicesPayload = (UnfinishedSlicesPayload) m.getPayload();
-            System.out.println("Slave  - Receiver - received update of unfinished work");
+            log("Slave  - Receiver - received update of unfinished work");
             // FIXME: do something with that
         }
 
         private void handleCipher(Message m) {
             CipherPayload cipherPayload = (CipherPayload) m.getPayload();
-            System.out.println("Slave  - Receiver - received cipher: \"" + cipherPayload.getCipher() + "\"");
+            log("Slave  - Receiver - received cipher: \"" + cipherPayload.getCipher() + "\"");
             // FIXME: do something with that
         }
     }

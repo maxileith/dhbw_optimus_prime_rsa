@@ -2,6 +2,7 @@ package optimus.prime.rsa.crypto;
 
 import optimus.prime.rsa.communication.payloads.SlicePayload;
 import optimus.prime.rsa.communication.payloads.SolutionPayload;
+import optimus.prime.rsa.main.Colors;
 
 import java.math.BigInteger;
 import java.util.List;
