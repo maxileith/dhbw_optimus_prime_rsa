@@ -105,7 +105,6 @@ public class RSAHelper {
                 RSAStatics.CERTAINTY)
         );
 
-
         try {
             AsymmetricCipherKeyPair keyPair = generator.generateKeyPair(p, q);
 
