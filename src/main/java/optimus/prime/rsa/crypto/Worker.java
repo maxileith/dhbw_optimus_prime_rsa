@@ -18,6 +18,7 @@ public class Worker implements Callable<SolutionPayload> {
     private final static String LOG_MESSAGE_NO_SOLUTION = ConsoleColors.CYAN_BRIGHT + "Worker - Found no solution in slice %s" + ConsoleColors.RESET;
     private final static String LOG_MESSAGE_SOLUTION_FOUND = ConsoleColors.CYAN_BRIGHT + "Worker - Found solution in slice %s - Solution is a:%d b:%d" + ConsoleColors.RESET;
     private final static String LOG_START_INSPECTING = ConsoleColors.CYAN_BRIGHT + "Worker - Start inspecting slice %s" + ConsoleColors.RESET;
+    private final static String LOG_INTERRUPTED = ConsoleColors.CYAN_BRIGHT + "Worker - Interrupted" + ConsoleColors.RESET;
 
     public Worker(SlicePayload slice, List<BigInteger> primes, BigInteger pubRsaKey) {
         this.slice = slice;
@@ -29,11 +30,13 @@ public class Worker implements Callable<SolutionPayload> {
     @Override
     public SolutionPayload call() {
         System.out.printf((LOG_START_INSPECTING) + "%n", this.slice);
+        // Check for interrupt here; 7000 primes in list; solution at ~5600; time -> 1m44s
         for (int a = this.slice.getStart(); a <= this.slice.getEnd(); a++) {
             BigInteger aInt = this.primes.get(a);
-            // Sollte später auf die reine Big Integer Variante gewechselt werden
             // TODO: Optimierung in der Dokumentation berücksichtigen
-            for (int b = a + 1; b < this.primes.size(); b++) {
+            // Check for interrupt here; 7000 primes in list; solution at ~5600; time -> 1m42s
+            // Faster interrupts, no performance difference when checking for interrupts here
+            for (int b = a + 1; b < this.primes.size() && !Thread.currentThread().isInterrupted(); b++) {
                 BigInteger bInt = this.primes.get(b);
                 if (this.rsaHelper.isValid(aInt, bInt, this.pubRsaKey)) { // TODO: Verify whether correct positioning
                     System.out.printf((LOG_MESSAGE_SOLUTION_FOUND) + "%n", this.slice, aInt, bInt);
@@ -41,6 +44,11 @@ public class Worker implements Callable<SolutionPayload> {
                 }
             }
         }
+
+        if (Thread.currentThread().isInterrupted()) {
+            System.out.println(LOG_INTERRUPTED);
+        }
+
         System.out.printf((LOG_MESSAGE_NO_SOLUTION) + "%n", this.slice);
         return SolutionPayload.NO_SOLUTION;
     }

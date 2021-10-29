@@ -6,6 +6,7 @@ import optimus.prime.rsa.crypto.Worker;
 import optimus.prime.rsa.config.NetworkConfiguration;
 import optimus.prime.rsa.config.StaticConfiguration;
 import optimus.prime.rsa.main.ConsoleColors;
+import optimus.prime.rsa.main.Main;
 import optimus.prime.rsa.main.Utils;
 
 import java.io.*;
@@ -18,6 +19,8 @@ public class Slave implements Runnable {
     private Socket socket;
     private ObjectOutputStream objectOutputStream;
     private Thread receiveThread;
+    private ExecutorService es;
+    private CompletionService<SolutionPayload> cs;
 
     private List<BigInteger> primes;
     private Queue<SlicePayload> currentMinorSlices;
@@ -34,13 +37,18 @@ public class Slave implements Runnable {
             );
             log("Slave  - established connection to master");
 
+            this.es = Executors.newFixedThreadPool(StaticConfiguration.SLAVE_WORKERS);
+            this.cs = new ExecutorCompletionService<>(es);
+
             InputStream inputStream = this.socket.getInputStream();
             ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
             OutputStream outputStream = this.socket.getOutputStream();
             this.objectOutputStream = new ObjectOutputStream(outputStream);
+
             Receiver receiver = new Receiver(objectInputStream);
             this.receiveThread = new Thread(receiver);
             this.receiveThread.start();
+
             log("Slave  - started receiveThread");
         } catch (IOException e) {
             System.err.println("Slave  - The master is probably not reachable. " + e);
@@ -54,9 +62,6 @@ public class Slave implements Runnable {
             return;
         }
         try {
-            ExecutorService es = Executors.newFixedThreadPool(StaticConfiguration.SLAVE_WORKERS); //FIXME: change dynamic
-            CompletionService<SolutionPayload> cs = new ExecutorCompletionService<>(es);
-
             log("Slave  - Sending hello message to master");
 
             Message joinMessage = new Message(MessageType.SLAVE_JOIN);
@@ -74,7 +79,7 @@ public class Slave implements Runnable {
                 log("Slave  - New work is assigned to the workers");
                 // do the math
                 while (!this.currentMinorSlices.isEmpty()) {
-                    cs.submit(new Worker(
+                    this.cs.submit(new Worker(
                             this.currentMinorSlices.remove(),
                             this.primes,
                             this.getPubKeyRsa()
@@ -84,7 +89,7 @@ public class Slave implements Runnable {
                 // collect the results
                 for (int resultsReceived = 0; resultsReceived < StaticConfiguration.SLAVE_WORKERS && this.running; resultsReceived++) {
                     try {
-                        Future<SolutionPayload> f = cs.take();
+                        Future<SolutionPayload> f = this.cs.take();
                         SolutionPayload s = f.get();
                         log("Slave  - received new result from a worker");
                         // Solution found
@@ -95,8 +100,8 @@ public class Slave implements Runnable {
                             this.running = false;
                             log("Slave  - worker found a solution! " + s);
                         }
-                    } catch (ExecutionException e) { // FIXME: macht das sinn?
-                        System.err.println("Slave  - Error in Worker: ");
+                    } catch (ExecutionException e) {
+                        System.err.println("Slave  - Error in Worker: " + e);
                         e.printStackTrace();
                         this.running = false;
                     }
@@ -110,14 +115,20 @@ public class Slave implements Runnable {
                 }
             }
             log("Slave  - stopped");
-            es.shutdown();
 
-            // wait for the receiver to terminate gracefully
+            // executor service could already be shutdown by
+            // the stopSlave method
+            if (!this.es.isShutdown()) {
+                this.es.shutdownNow();
+                //noinspection ResultOfMethodCallIgnored
+                this.es.awaitTermination(10, TimeUnit.SECONDS);
+            }
+
+            // wait for the receiver to terminate
             this.receiveThread.join();
 
             log("Slave  - Thread terminated");
 
-            // TODO: Sender
         } catch (IOException | InterruptedException e) {
             System.err.println("Slave  - An error occurred." + e);
         }
@@ -139,20 +150,40 @@ public class Slave implements Runnable {
         return this.pubKeyRsa;
     }
 
-    private void stopSlave() {
-        log("Slave  - sending SLAVE_EXIT_ACKNOWLEDGE");
-        Message m = new Message(MessageType.SLAVE_EXIT_ACKNOWLEDGE);
-        try {
-            this.objectOutputStream.writeObject(m);
-            this.objectOutputStream.flush();
-            this.socket.close();
-        } catch (IOException e) {
-            System.err.println("Slave  - failed to send SLAVE_EXIT_ACKNOWLEDGE");
+    private void stopSlave(boolean force) {
+        if (!force) {
+            log("Slave  - sending SLAVE_EXIT_ACKNOWLEDGE");
+            Message m = new Message(MessageType.SLAVE_EXIT_ACKNOWLEDGE);
+            try {
+                this.objectOutputStream.writeObject(m);
+                this.objectOutputStream.flush();
+                this.socket.close();
+            } catch (IOException ignored) {
+                System.err.println("Slave  - failed to send SLAVE_EXIT_ACKNOWLEDGE");
+            }
+        } else {
+            try {
+                this.socket.close();
+            } catch (IOException ignored) {
+            }
         }
+
         // do not wait for the receiver thread to be terminated here,
         // because this method gets called by the receiver. so if joining
         // here the receiver is stuck waiting for itself.
         this.running = false;
+
+        if (force) {
+            log("Slave  - sending interrupting workers ...");
+            this.es.shutdownNow();
+            try {
+                // noinspection ResultOfMethodCallIgnored
+                this.es.awaitTermination(10, TimeUnit.SECONDS);
+                log("Slave  - interrupting off all workers is done");
+            } catch (InterruptedException e) {
+                System.err.println("Slave  - error while interrupting workers - " + e);
+            }
+        }
     }
 
     private static void log(String s) {
@@ -177,7 +208,10 @@ public class Slave implements Runnable {
                 }
             } catch (IOException | ClassNotFoundException e) {
                 if (this.running) {
-                    System.err.println("Slave  - Receiver - failed to read incoming object - " + e);
+                    System.err.println("Slave  - Receiver - lost connection to master - " + e);
+                    log("Slave  - Receiver - reporting lost connection to main thread");
+                    Main.reportMasterLost();
+                    stopSlave(true);
                 } else {
                     log("Slave  - Receiver - stopped on purpose");
                 }
@@ -217,7 +251,7 @@ public class Slave implements Runnable {
             log("Slave  - Receiver - MASTER_EXIT");
             log("Slave  - Receiver - stopping receiver");
             this.running = false;
-            stopSlave();
+            stopSlave(false);
         }
 
         private void handleMasterSendPrimes(Message m) {

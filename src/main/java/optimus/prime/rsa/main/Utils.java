@@ -44,7 +44,10 @@ public class Utils {
             String line;
             while ((line = br.readLine()) != null) {
                 BigInteger value = new BigInteger(line);
-                primes.add(value);
+                // don't load duplicates
+                if (!primes.contains(value)) {
+                    primes.add(value);
+                }
             }
         } catch (IOException | NullPointerException e) {
             System.err.println("Couldn't load primes - " + e);

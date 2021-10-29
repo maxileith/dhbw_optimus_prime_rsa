@@ -41,6 +41,7 @@ public class Master implements Runnable {
         if (MasterConfiguration.slicesToDo == null) {
             MasterConfiguration.slicesToDo = Utils.getSlices(0, MasterConfiguration.primes.size() - 1, MasterConfiguration.MASTER_SLICE_SIZE);
         }
+        log("Master - slices: " + MasterConfiguration.slicesToDo);
 
         try {
             this.serverSocket = new ServerSocket(
