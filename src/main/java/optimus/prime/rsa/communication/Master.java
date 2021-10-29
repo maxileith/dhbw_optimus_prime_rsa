@@ -22,7 +22,6 @@ public class Master implements Runnable {
     private final Broadcaster broadcaster;
     private final Thread broadcasterThread;
 
-    private final NetworkConfiguration networkConfig;
     private final List<BigInteger> primes;
 
     private final Queue<SlicePayload> slicesToDo;
@@ -30,11 +29,10 @@ public class Master implements Runnable {
 
     private SolutionPayload solution = null;
 
-    public Master(NetworkConfiguration networkConfig) {
+    public Master() {
         this.broadcaster = new Broadcaster();
         this.broadcasterThread = new Thread(this.broadcaster);
 
-        this.networkConfig = networkConfig;
         this.primes = Utils.getPrimes();
 
         this.slicesToDo = Utils.getSlices(0, this.primes.size() - 1, MasterConfiguration.MASTER_SLICE_SIZE);
@@ -43,7 +41,7 @@ public class Master implements Runnable {
             this.serverSocket = new ServerSocket(
                     StaticConfiguration.PORT,
                     MasterConfiguration.MAX_INCOMING_SLAVES,
-                    this.networkConfig.getMasterAddress()
+                    NetworkConfiguration.masterAddress
             );
             this.serverSocket.setSoTimeout(1000);
             log("Master - Socket opened " + this.serverSocket);
@@ -83,7 +81,6 @@ public class Master implements Runnable {
                 log("Master - Connection from " + slave + " established.");
                 ConnectionHandler handler = new ConnectionHandler(
                         slave,
-                        this.networkConfig,
                         this.broadcaster
                 );
                 Thread thread = new Thread(handler);
@@ -119,6 +116,7 @@ public class Master implements Runnable {
     private synchronized void abortSlice(SlicePayload slice) {
         log("Master - Slice " + slice + " added back to queue");
         this.slicesInProgress.remove(slice);
+        this.slicesToDo.add(slice);
     }
 
     private synchronized List<BigInteger> getPrimes() {
@@ -163,14 +161,11 @@ public class Master implements Runnable {
         private boolean running = true;
         private final Broadcaster broadcaster;
 
-        private final NetworkConfiguration networkConfig;
-
         private SlicePayload currentSlice;
 
-        public ConnectionHandler(Socket slave, NetworkConfiguration networkConfig, Broadcaster broadcaster) {
+        public ConnectionHandler(Socket slave, Broadcaster broadcaster) {
             log("Master - ConnectionHandler - " + slave + " - Initializing new ConnectionHandler.");
             this.slave = slave;
-            this.networkConfig = networkConfig;
             this.broadcaster = broadcaster;
         }
 
@@ -206,7 +201,13 @@ public class Master implements Runnable {
             } catch (ClassNotFoundException e) {
                 System.err.println("Master - ConnectionHandler - " + this.slave + " - Class of incoming object unknown - " + e);
             } finally {
+                // remove the host from networking
                 broadcaster.removeOutputStream(this.slave.getInetAddress());
+                NetworkConfiguration.hosts.remove(this.slave.getInetAddress());
+                // tell everybody that there is one slave less
+                HostsPayload hostsPayload = new HostsPayload(NetworkConfiguration.hosts);
+                Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
+                broadcaster.send(hostsMessage);
             }
 
             log("Master - ConnectionHandler - " + this.slave + " - Terminated");
@@ -229,7 +230,7 @@ public class Master implements Runnable {
 
             // Add slave IP-Address to network Information
             InetAddress slaveAddress = this.slave.getInetAddress();
-            this.networkConfig.addHost(slaveAddress);
+            NetworkConfiguration.hosts.add(slaveAddress);
 
             // create payload of primes
             PrimesPayload primesPayload = new PrimesPayload(getPrimes());
@@ -256,7 +257,7 @@ public class Master implements Runnable {
             log("Master - ConnectionHandler - " + this.slave + " - Sending new work to Slave: " + this.currentSlice);
 
             // send new hosts list to all slaves
-            HostsPayload hostsPayload = new HostsPayload(this.networkConfig.getHosts());
+            HostsPayload hostsPayload = new HostsPayload(NetworkConfiguration.hosts);
             Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
             this.broadcaster.send(hostsMessage);
 

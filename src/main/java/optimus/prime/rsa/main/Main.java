@@ -94,7 +94,7 @@ public class Main {
             System.err.println(ap.get("master-address") + " is not a valid hostname / ip-address");
             System.exit(0);
         }
-        NetworkConfiguration networkConfig = new NetworkConfiguration(masterAddress);
+        NetworkConfiguration.masterAddress = masterAddress;
 
         // port key
         StaticConfiguration.PORT = Integer.parseInt(ap.get("port"));
@@ -116,14 +116,14 @@ public class Main {
         // Start master if not slave
         Thread masterThread = null;
         if (isMaster) {
-            Master master = new Master(networkConfig);
+            Master master = new Master();
             masterThread = new Thread(master);
             masterThread.start();
 
-            System.out.println("To join a slave use -m " + networkConfig.getMasterAddress());
+            System.out.println("To join a slave use -m " + NetworkConfiguration.masterAddress);
         }
 
-        Slave slave = new Slave(networkConfig);
+        Slave slave = new Slave();
         Thread slaveThread = new Thread(slave);
         slaveThread.start();
 

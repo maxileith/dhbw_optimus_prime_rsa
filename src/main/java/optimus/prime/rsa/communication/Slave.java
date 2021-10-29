@@ -18,19 +18,17 @@ public class Slave implements Runnable {
     private ObjectOutputStream objectOutputStream;
     private Thread receiveThread;
 
-    private final NetworkConfiguration networkConfig;
     private List<BigInteger> primes;
     private Queue<SlicePayload> currentMinorSlices;
     private String pubKeyRsa;
 
     private boolean running = true;
 
-    public Slave(NetworkConfiguration networkConfig) {
-        this.networkConfig = networkConfig;
+    public Slave() {
 
         try {
             this.socket = new Socket(
-                    networkConfig.getMasterAddress(),
+                    NetworkConfiguration.masterAddress,
                     StaticConfiguration.PORT
             );
             log("Slave  - established connection to master");
@@ -204,7 +202,7 @@ public class Slave implements Runnable {
 
         private void handleHostList(Message m) {
             HostsPayload hostsPayload = (HostsPayload) m.getPayload();
-            networkConfig.setHosts(hostsPayload.getHosts());
+            NetworkConfiguration.hosts = hostsPayload.getHosts();
             log("Slave  - Receiver - Received new host list");
         }
 
