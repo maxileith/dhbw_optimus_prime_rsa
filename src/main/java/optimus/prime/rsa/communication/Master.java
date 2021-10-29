@@ -282,19 +282,19 @@ public class Master implements Runnable {
                 log("Master - ConnectionHandler - " + this.slave + " - Sending new slice to slave: " + this.currentSlice);
                 Message sliceMessage = new Message(MessageType.MASTER_DO_WORK, this.currentSlice);
                 response.addMessage(sliceMessage);
-                return response;
+
+                // send new unfinished slices to all slaves
+                UnfinishedSlicesPayload unfinishedSlicesPayload = new UnfinishedSlicesPayload(getUnfinishedSlices());
+                Message unfinishedSlicesMessage = new Message(MessageType.MASTER_UNFINISHED_SLICES, unfinishedSlicesPayload);
+                this.broadcaster.send(unfinishedSlicesMessage);
+
             } catch (NoSuchElementException ignored) {
                 log("Master - ConnectionHandler - " + this.slave + " - No more slices to do -> sending MASTER_EXIT to Broadcaster");
                 Message exitMessage = new Message(MessageType.MASTER_EXIT);
-                this.broadcaster.send(exitMessage);
+                response.addMessage(exitMessage);
             }
 
-            // send new unfinished slices to all slaves
-            UnfinishedSlicesPayload unfinishedSlicesPayload = new UnfinishedSlicesPayload(getUnfinishedSlices());
-            Message unfinishedSlicesMessage = new Message(MessageType.MASTER_UNFINISHED_SLICES, unfinishedSlicesPayload);
-            this.broadcaster.send(unfinishedSlicesMessage);
-
-            return null;
+            return response;
         }
 
         private MultiMessage handleSolutionFound(Message m) {
