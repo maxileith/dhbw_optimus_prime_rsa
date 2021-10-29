@@ -20,7 +20,7 @@ public class Slave implements Runnable {
 
     private List<BigInteger> primes;
     private Queue<SlicePayload> currentMinorSlices;
-    private String pubKeyRsa;
+    private BigInteger pubKeyRsa;
 
     private boolean running = true;
 
@@ -130,11 +130,11 @@ public class Slave implements Runnable {
         this.primes = primes;
     }
 
-    private synchronized void setPubKeyRsa(String pubKeyRsa) {
+    private synchronized void setPubKeyRsa(BigInteger pubKeyRsa) {
         this.pubKeyRsa = pubKeyRsa;
     }
 
-    private synchronized String getPubKeyRsa() {
+    private synchronized BigInteger getPubKeyRsa() {
         return this.pubKeyRsa;
     }
 
