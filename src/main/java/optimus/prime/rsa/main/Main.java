@@ -127,7 +127,11 @@ public class Main {
 
         Slave slave = new Slave();
         Thread slaveThread = new Thread(slave);
-        slaveThread.start();
+        if (StaticConfiguration.SLAVE_WORKERS != 0) {
+            slaveThread.start();
+        } else {
+            System.out.println("Main   - Creating no slave because workers are set to 0");
+        }
 
         try {
             slaveThread.join();
