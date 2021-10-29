@@ -76,6 +76,14 @@ public class Main {
                         "1000"
                 )
         );
+        ap.addArgument(
+                new ArgumentBlueprint(
+                        "primes",
+                        true,
+                        "master-only: defines the prime list to use",
+                        "100"
+                )
+        );
 
         ap.load(args);
 
@@ -115,12 +123,12 @@ public class Main {
         // max-slaves key
         MasterConfiguration.MAX_INCOMING_SLAVES = Integer.parseInt(ap.get("max-slaves"));
 
-        loop();
+        loop(ap.get("primes"));
 
         System.out.println("Main   - Bye :)");
     }
 
-    private static void loop() {
+    private static void loop(String primeList) {
         do {
 
             // update masterAddress if master is lost
@@ -151,7 +159,7 @@ public class Main {
             // Start master if not slave
             Thread masterThread = null;
             if (MasterConfiguration.isMaster) {
-                Master master = new Master();
+                Master master = new Master(primeList);
                 masterThread = new Thread(master);
                 masterThread.start();
 

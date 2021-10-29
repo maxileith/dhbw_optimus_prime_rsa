@@ -26,7 +26,7 @@ public class Master implements Runnable {
 
     private SolutionPayload solution = null;
 
-    public Master() {
+    public Master(String primeList) {
         this.broadcaster = new Broadcaster();
         this.broadcasterThread = new Thread(this.broadcaster);
 
@@ -35,7 +35,7 @@ public class Master implements Runnable {
         // that was a slave before, the primes that were received
         // by the slave have to be used in the future.
         if (MasterConfiguration.primes == null) {
-            MasterConfiguration.primes = Utils.getPrimes();
+            MasterConfiguration.primes = Utils.getPrimes(primeList);
         }
         // same reason as for the primes above
         if (MasterConfiguration.slicesToDo == null) {
