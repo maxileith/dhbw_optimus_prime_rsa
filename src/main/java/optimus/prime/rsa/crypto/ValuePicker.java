@@ -35,7 +35,7 @@ public class ValuePicker {
             String q = getLineAtPos(path, randomNumQ);
 
             // test the primes
-            String text = "Test";
+            String text = "\"It's the ship that made the Kessel run in less than twelve parsecs. I've outrun Imperial starships. Not the local bulk cruisers, mind you. I'm talking about the big Corellian ships, now. She's fast enough for you, old man.\" - Han Solo";
 
             RSAKeyPairGenerator generator = new RSAKeyPairGenerator();
             generator.init(new RSAKeyGenerationParameters(e,

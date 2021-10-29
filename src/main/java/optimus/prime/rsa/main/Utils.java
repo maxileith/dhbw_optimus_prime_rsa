@@ -16,7 +16,25 @@ public class Utils {
 
     // TODO: maybe make an algorithm that makes slices that are equally hard to calculate
 
-    public static Queue<SlicePayload> getSlices(int start, int end, int stepSize) {
+    public static Queue<SlicePayload> getSlices(int numberOfPrimes, int start, int end, long checksPerSlice) {
+        final Queue<SlicePayload> slices = new LinkedList<>();
+
+        int currentStart = start;
+        int currentEnd = 0;
+
+        while (currentEnd != end) {
+            currentEnd = Math.round(numberOfPrimes - (int) Math.sqrt(Math.pow(numberOfPrimes - currentStart, 2) - 2 * checksPerSlice));
+            currentEnd = Math.min(currentEnd, end);
+            SlicePayload slice = new SlicePayload(currentStart, currentEnd);
+            slices.add(slice);
+            currentStart = currentEnd + 1;
+        }
+
+        return slices;
+    }
+
+    public static Queue<SlicePayload> getNSlices(int start, int end, int n) {
+        int stepSize = (int) Math.ceil((float) (end - start + 1) / n);
         Queue<SlicePayload> slices = new LinkedList<>();
         for (int i = start; i <= end; i += stepSize) {
             int sliceEnd = Math.min(i + stepSize - 1, end);
@@ -24,11 +42,6 @@ public class Utils {
             slices.add(slice);
         }
         return slices;
-    }
-
-    public static Queue<SlicePayload> getNSlices(int start, int end, int n) {
-        int stepSize = (int) Math.ceil((float) (end - start + 1) / n);
-        return getSlices(start, end, stepSize);
     }
 
     public static List<BigInteger> getPrimes(String primeList) {

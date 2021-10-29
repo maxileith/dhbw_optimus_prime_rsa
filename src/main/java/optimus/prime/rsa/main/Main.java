@@ -30,10 +30,10 @@ public class Main {
         );
         ap.addArgument(
                 new ArgumentBlueprint(
-                        "master-slice-size",
+                        "master-checks-per-slice",
                         false,
-                        "master-only: defines the size of the task that is being delegated to a slave",
-                        "100"
+                        "master-only: defines the number of checks per slice",
+                        "500000"
                 )
         );
         ap.addArgument(
@@ -119,7 +119,7 @@ public class Main {
         // cipher key
         MasterConfiguration.CIPHER = ap.get("cipher");
         // master-slice-size key
-        MasterConfiguration.MASTER_SLICE_SIZE = Integer.parseInt(ap.get("master-slice-size"));
+        MasterConfiguration.MASTER_CHECKS_PER_SLICE = Long.parseLong(ap.get("master-checks-per-slice"));
         // max-slaves key
         MasterConfiguration.MAX_INCOMING_SLAVES = Integer.parseInt(ap.get("max-slaves"));
 

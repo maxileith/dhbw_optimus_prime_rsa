@@ -39,7 +39,7 @@ public class Master implements Runnable {
         }
         // same reason as for the primes above
         if (MasterConfiguration.slicesToDo == null) {
-            MasterConfiguration.slicesToDo = Utils.getSlices(0, MasterConfiguration.primes.size() - 1, MasterConfiguration.MASTER_SLICE_SIZE);
+            MasterConfiguration.slicesToDo = Utils.getSlices(MasterConfiguration.primes.size(), 0, MasterConfiguration.primes.size() - 1, MasterConfiguration.MASTER_CHECKS_PER_SLICE);
         }
         log("Master - slices: " + MasterConfiguration.slicesToDo);
         log("Master - cipher: " + MasterConfiguration.CIPHER);
