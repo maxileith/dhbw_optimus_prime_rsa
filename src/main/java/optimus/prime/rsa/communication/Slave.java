@@ -23,7 +23,6 @@ public class Slave implements Runnable {
     private CompletionService<SolutionPayload> cs;
 
     private Queue<SlicePayload> currentMinorSlices;
-    private BigInteger pubKeyRsa;
 
     private boolean running = true;
 
@@ -81,7 +80,7 @@ public class Slave implements Runnable {
                     this.cs.submit(new Worker(
                             this.currentMinorSlices.remove(),
                             StaticConfiguration.primes,
-                            this.getPubKeyRsa()
+                            MasterConfiguration.PUB_RSA_KEY
                     ));
                 }
 
@@ -135,14 +134,6 @@ public class Slave implements Runnable {
 
     private synchronized void setCurrentSlice(SlicePayload majorSlice) {
         this.currentMinorSlices = Utils.getNSlices(majorSlice.getStart(), majorSlice.getEnd(), StaticConfiguration.SLAVE_WORKERS);
-    }
-
-    private synchronized void setPubKeyRsa(BigInteger pubKeyRsa) {
-        this.pubKeyRsa = pubKeyRsa;
-    }
-
-    private synchronized BigInteger getPubKeyRsa() {
-        return this.pubKeyRsa;
     }
 
     private void stopSlave(boolean force) {
@@ -258,7 +249,7 @@ public class Slave implements Runnable {
 
         private void handleMasterSendPubKeyRsa(Message m) {
             PubKeyRsaPayload pubKeyRsaPayload = (PubKeyRsaPayload) m.getPayload();
-            setPubKeyRsa(pubKeyRsaPayload.getPubKeyRsa());
+            MasterConfiguration.PUB_RSA_KEY = pubKeyRsaPayload.getPubKeyRsa();
             log("Slave  - Receiver - set public key to \"" + pubKeyRsaPayload.getPubKeyRsa() + "\"");
         }
 
