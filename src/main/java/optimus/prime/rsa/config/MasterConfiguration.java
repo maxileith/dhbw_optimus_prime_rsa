@@ -13,5 +13,4 @@ public class MasterConfiguration {
     public static int MAX_INCOMING_SLAVES;
     public static Queue<SlicePayload> slicesToDo = null;
     public static boolean isMaster = false;
-    public static List<BigInteger> primes = null;
 }

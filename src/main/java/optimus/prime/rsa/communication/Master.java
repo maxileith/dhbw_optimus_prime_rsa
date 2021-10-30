@@ -34,12 +34,12 @@ public class Master implements Runnable {
         // master configuration. this is important, since on a host
         // that was a slave before, the primes that were received
         // by the slave have to be used in the future.
-        if (MasterConfiguration.primes == null) {
-            MasterConfiguration.primes = Utils.getPrimes(primeList);
+        if (StaticConfiguration.primes == null) {
+            StaticConfiguration.primes = Utils.getPrimes(primeList);
         }
         // same reason as for the primes above
         if (MasterConfiguration.slicesToDo == null) {
-            MasterConfiguration.slicesToDo = Utils.getSlices(MasterConfiguration.primes.size(), 0, MasterConfiguration.primes.size() - 1, MasterConfiguration.MASTER_CHECKS_PER_SLICE);
+            MasterConfiguration.slicesToDo = Utils.getSlices(StaticConfiguration.primes.size(), 0, StaticConfiguration.primes.size() - 1, MasterConfiguration.MASTER_CHECKS_PER_SLICE);
         }
         log("Master - slices: " + MasterConfiguration.slicesToDo);
         log("Master - cipher: " + MasterConfiguration.CIPHER);
@@ -128,7 +128,7 @@ public class Master implements Runnable {
     }
 
     private synchronized List<BigInteger> getPrimes() {
-        return MasterConfiguration.primes;
+        return StaticConfiguration.primes;
     }
 
     private Queue<SlicePayload> getUnfinishedSlices() {

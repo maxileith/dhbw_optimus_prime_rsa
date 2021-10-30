@@ -22,7 +22,6 @@ public class Slave implements Runnable {
     private ExecutorService es;
     private CompletionService<SolutionPayload> cs;
 
-    private List<BigInteger> primes;
     private Queue<SlicePayload> currentMinorSlices;
     private BigInteger pubKeyRsa;
 
@@ -81,7 +80,7 @@ public class Slave implements Runnable {
                 while (!this.currentMinorSlices.isEmpty()) {
                     this.cs.submit(new Worker(
                             this.currentMinorSlices.remove(),
-                            this.primes,
+                            StaticConfiguration.primes,
                             this.getPubKeyRsa()
                     ));
                 }
@@ -138,10 +137,6 @@ public class Slave implements Runnable {
         this.currentMinorSlices = Utils.getNSlices(majorSlice.getStart(), majorSlice.getEnd(), StaticConfiguration.SLAVE_WORKERS);
     }
 
-    private synchronized void setPrimes(List<BigInteger> primes) {
-        this.primes = primes;
-    }
-
     private synchronized void setPubKeyRsa(BigInteger pubKeyRsa) {
         this.pubKeyRsa = pubKeyRsa;
     }
@@ -195,12 +190,13 @@ public class Slave implements Runnable {
         private boolean running = true;
         private final ObjectInputStream objectInputStream;
 
-        public Receiver(ObjectInputStream dataInputStream) {
-            this.objectInputStream = dataInputStream;
+        public Receiver(ObjectInputStream objectInputStream) {
+            this.objectInputStream = objectInputStream;
         }
 
         @Override
         public void run() {
+
             try {
                 while (this.running) {
                     MultiMessage messages = (MultiMessage) this.objectInputStream.readObject();
@@ -256,7 +252,7 @@ public class Slave implements Runnable {
 
         private void handleMasterSendPrimes(Message m) {
             PrimesPayload primesPayload = (PrimesPayload) m.getPayload();
-            setPrimes(primesPayload.getPrimes());
+            StaticConfiguration.primes = primesPayload.getPrimes();
             log("Slave  - Receiver - set primes");
         }
 
