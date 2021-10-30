@@ -90,7 +90,8 @@ public class Main {
         // load all ip addresses the host listens to
         try {
             NetworkConfiguration.ownAddresses = Utils.getOwnIPs();
-            System.out.println("Main   - own ips: " + NetworkConfiguration.ownAddresses);
+            System.out.println("Main   - own ips: ");
+            NetworkConfiguration.ownAddresses.forEach(e -> System.out.println(e.getHostAddress()));
         } catch (SocketException e) {
             System.err.println("Main   - unable to load own ips - " + e);
             System.exit(1);
@@ -163,8 +164,6 @@ public class Main {
                 Master master = new Master(primeList);
                 masterThread = new Thread(master);
                 masterThread.start();
-
-                System.out.println("Main   - To join a slave use arguments " + ConsoleColors.RED_UNDERLINED + "--master-address " + NetworkConfiguration.masterAddress + ConsoleColors.RESET);
             }
 
             Thread slaveThread = null;

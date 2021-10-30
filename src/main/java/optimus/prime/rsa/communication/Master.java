@@ -40,9 +40,17 @@ public class Master implements Runnable {
         if (MasterConfiguration.slicesToDo == null) {
             MasterConfiguration.slicesToDo = Utils.getSlices(StaticConfiguration.primes.size(), 0, StaticConfiguration.primes.size() - 1, MasterConfiguration.MASTER_CHECKS_PER_SLICE);
         }
-        log("Master - slices: " + MasterConfiguration.slicesToDo);
         log("Master - cipher: " + StaticConfiguration.CIPHER);
         log("Master - public key: " + StaticConfiguration.PUB_RSA_KEY);
+        log("Master - doing " + MasterConfiguration.MASTER_CHECKS_PER_SLICE + " checks per slice");
+        log("Master - slices:");
+        List<SlicePayload> slicesToDoList = MasterConfiguration.slicesToDo.stream().toList();
+        for (int i = 0; i < slicesToDoList.size(); i += 6) {
+            for (int j = 0; j < 6 && i + j < slicesToDoList.size(); j++) {
+                log(String.format("%17s", slicesToDoList.get(i + j).toString()), false);
+            }
+            log("", true);
+        }
 
         // reset connected hosts
         NetworkConfiguration.hosts = new ArrayList<>();
@@ -68,6 +76,7 @@ public class Master implements Runnable {
 
         try {
             log("Master - beginning to distribute connections ...");
+            log("Master - To join a slave use arguments " + ConsoleColors.RED_UNDERLINED + "--master-address " + NetworkConfiguration.masterAddress.getHostAddress());
             this.distributeConnections();
         } catch (IOException e) {
             System.err.println("Master - exception while distributing the connections - " + e);
@@ -102,8 +111,15 @@ public class Master implements Runnable {
         log("Master - Stopping ConnectionHandlers");
     }
 
+    private static void log(String s, boolean newLine) {
+        if (newLine) {
+            s += "\n";
+        }
+        System.out.print(ConsoleColors.BLUE_BRIGHT + s + ConsoleColors.RESET);
+    }
+
     private static void log(String s) {
-        System.out.println(ConsoleColors.BLUE_BRIGHT + s + ConsoleColors.RESET);
+        log(s, true);
     }
 
     private synchronized void markAsSolved(SolutionPayload s) {
@@ -169,14 +185,14 @@ public class Master implements Runnable {
         private SlicePayload currentSlice;
 
         public ConnectionHandler(Socket slave, Broadcaster broadcaster) {
-            log("Master - ConnectionHandler - " + slave + " - Initializing new ConnectionHandler.");
+            log("Master - ConnectionHandler - " + slave.getInetAddress().getHostAddress() + " - Initializing new ConnectionHandler.");
             this.slave = slave;
             this.broadcaster = broadcaster;
         }
 
         @Override
         public void run() {
-            log("Master - ConnectionHandler - " + this.slave + " - Starting ConnectionHandler");
+            log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Starting ConnectionHandler");
             try (
                     OutputStream outputStream = this.slave.getOutputStream();
                     SyncedObjectOutputStream objectOutputStream = new SyncedObjectOutputStream(outputStream);
@@ -187,7 +203,7 @@ public class Master implements Runnable {
                 broadcaster.addOutputStream(this.slave.getInetAddress(), objectOutputStream);
                 // main loop to receive messages
                 while (this.running) {
-                    log("Master - ConnectionHandler - " + this.slave + " - waiting for message to be received ...");
+                    log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - waiting for message to be received ...");
                     Message message = (Message) objectInputStream.readObject();
                     final MultiMessage response = this.handleMessage(message);
 
@@ -197,14 +213,14 @@ public class Master implements Runnable {
                 }
             } catch (IOException e) {
                 if (this.running) {
-                    System.err.println("Master - ConnectionHandler - " + this.slave + " - Object Input stream closed " + e);
+                    System.err.println("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Object Input stream closed " + e);
                     // Slave died
                     abortSlice(this.currentSlice);
                 } else {
-                    log("Master - ConnectionHandler - " + this.slave + " - Slave disconnected because solution was found.");
+                    log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Slave disconnected because solution was found.");
                 }
             } catch (ClassNotFoundException e) {
-                System.err.println("Master - ConnectionHandler - " + this.slave + " - Class of incoming object unknown - " + e);
+                System.err.println("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Class of incoming object unknown - " + e);
             } finally {
                 // remove the host from networking
                 broadcaster.removeOutputStream(this.slave.getInetAddress());
@@ -215,11 +231,11 @@ public class Master implements Runnable {
                 broadcaster.send(hostsMessage);
             }
 
-            log("Master - ConnectionHandler - " + this.slave + " - Terminated");
+            log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Terminated");
         }
 
         private MultiMessage handleMessage(Message m) {
-            log("Master - ConnectionHandler - " + this.slave + " - Received message");
+            log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Received message");
             return switch (m.getType()) {
                 case SLAVE_JOIN -> this.handleJoin();
                 case SLAVE_FINISHED_WORK -> this.handleSlaveFinishedWork();
@@ -230,7 +246,7 @@ public class Master implements Runnable {
         }
 
         private MultiMessage handleJoin() {
-            log("Master - ConnectionHandler - " + this.slave + " - Slave wants to join");
+            log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Slave wants to join");
             MultiMessage response = new MultiMessage();
 
             InetAddress slaveAddress = this.slave.getInetAddress();
@@ -244,39 +260,39 @@ public class Master implements Runnable {
                 PrimesPayload primesPayload = new PrimesPayload(StaticConfiguration.primes);
                 Message primesMessage = new Message(MessageType.MASTER_SEND_PRIMES, primesPayload);
                 response.addMessage(primesMessage);
-                log("Master - ConnectionHandler - " + this.slave + " - Sending primes to Slave");
+                log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Sending primes to Slave");
 
                 // create payload for the public key
                 PubKeyRsaPayload pubKeyRsaPayload = new PubKeyRsaPayload(StaticConfiguration.PUB_RSA_KEY);
                 Message pubKeyRsaMessage = new Message(MessageType.MASTER_SEND_PUB_KEY_RSA, pubKeyRsaPayload);
                 response.addMessage(pubKeyRsaMessage);
-                log("Master - ConnectionHandler - " + this.slave + " - Sending the public key: \"" + StaticConfiguration.PUB_RSA_KEY + "\"");
+                log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Sending the public key: \"" + StaticConfiguration.PUB_RSA_KEY + "\"");
 
                 // create payload for the cipher
                 CipherPayload cipherPayload = new CipherPayload(StaticConfiguration.CIPHER);
                 Message cipherMessage = new Message(MessageType.MASTER_CIPHER, cipherPayload);
                 response.addMessage(cipherMessage);
-                log("Master - ConnectionHandler - " + this.slave + " - Sending the cipher: \"" + StaticConfiguration.CIPHER + "\"");
+                log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Sending the cipher: \"" + StaticConfiguration.CIPHER + "\"");
 
                 // send new hosts list to all slaves
                 HostsPayload hostsPayload = new HostsPayload(NetworkConfiguration.hosts);
                 Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
                 this.broadcaster.send(hostsMessage);
             } else {
-                log("Master - ConnectionHandler - " + this.slave + " - Skip sending of primes, public key, cipher and host list, because the slave is hosted on the same host as the master");
+                log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Skip sending of primes, public key, cipher and host list, because the slave is hosted on the same host as the master");
             }
 
             // create payload for next tasks
             this.currentSlice = getNextSlice();
             Message sliceMessage = new Message(MessageType.MASTER_DO_WORK, this.currentSlice);
             response.addMessage(sliceMessage);
-            log("Master - ConnectionHandler - " + this.slave + " - Sending new work to Slave: " + this.currentSlice);
+            log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Sending new work to Slave: " + this.currentSlice);
 
             return response;
         }
 
         private MultiMessage handleSlaveFinishedWork() {
-            log("Master - ConnectionHandler - " + this.slave + " - Slave finished Work");
+            log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Slave finished Work");
             // except TaskPayload
             MultiMessage response = new MultiMessage();
 
@@ -285,7 +301,7 @@ public class Master implements Runnable {
             // create new slice for slave
             try {
                 this.currentSlice = getNextSlice();
-                log("Master - ConnectionHandler - " + this.slave + " - Sending new slice to slave: " + this.currentSlice);
+                log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Sending new slice to slave: " + this.currentSlice);
                 Message sliceMessage = new Message(MessageType.MASTER_DO_WORK, this.currentSlice);
                 response.addMessage(sliceMessage);
 
@@ -295,7 +311,7 @@ public class Master implements Runnable {
                 this.broadcaster.send(unfinishedSlicesMessage);
 
             } catch (NoSuchElementException ignored) {
-                log("Master - ConnectionHandler - " + this.slave + " - No more slices to do -> sending MASTER_EXIT to Broadcaster");
+                log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - No more slices to do -> sending MASTER_EXIT to Broadcaster");
                 Message exitMessage = new Message(MessageType.MASTER_EXIT);
                 response.addMessage(exitMessage);
             }
@@ -305,13 +321,13 @@ public class Master implements Runnable {
 
         @SuppressWarnings("SameReturnValue")
         private MultiMessage handleSolutionFound(Message m) {
-            log("Master - ConnectionHandler - " + this.slave + " - Found solution");
+            log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Found solution");
 
             // Key found - other slaves can stop working
             SolutionPayload solution = (SolutionPayload) m.getPayload();
             markAsSolved(solution);
 
-            log("Master - ConnectionHandler - " + this.slave + " - No more slices to do -> sending MASTER_EXIT to Broadcaster");
+            log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - No more slices to do -> sending MASTER_EXIT to Broadcaster");
             Message exitMessage = new Message(MessageType.MASTER_EXIT);
             this.broadcaster.send(exitMessage);
 
@@ -320,7 +336,7 @@ public class Master implements Runnable {
 
         @SuppressWarnings("SameReturnValue")
         private MultiMessage handleExitAcknowledge() {
-            log("Master - ConnectionHandler - " + this.slave + " - Slave acknowledged exit");
+            log("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - Slave acknowledged exit");
             this.running = false;
             try {
                 this.slave.close();
@@ -363,19 +379,19 @@ public class Master implements Runnable {
                     try {
                         this.streams.get(i).writeSyncedObjectFlush(mm);
                     } catch (IOException e) {
-                        log("Master - Broadcaster - Failed to send to " + this.streams.get(i) + " - " + e);
+                        log("Master - Broadcaster - Failed to send to " + i.getHostAddress() + " - " + e);
                     }
                 }
             }
         }
 
         public synchronized void addOutputStream(InetAddress address, SyncedObjectOutputStream stream) {
-            log("Master - Broadcaster - Adding stream for broadcasting: " + address);
+            log("Master - Broadcaster - Adding stream for broadcasting: " + address.getHostAddress());
             this.streams.put(address, stream);
         }
 
         public synchronized void removeOutputStream(InetAddress address) {
-            log("Master - Broadcaster - Removing stream for broadcasting: " + address);
+            log("Master - Broadcaster - Removing stream for broadcasting: " + address.getHostAddress());
             this.streams.remove(address);
         }
 
