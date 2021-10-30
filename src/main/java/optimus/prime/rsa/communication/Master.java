@@ -45,6 +45,9 @@ public class Master implements Runnable {
         log("Master - cipher: " + MasterConfiguration.CIPHER);
         log("Master - public key: " + MasterConfiguration.PUB_RSA_KEY);
 
+        // reset connected hosts
+        NetworkConfiguration.hosts = new ArrayList<>();
+
         try {
             this.serverSocket = new ServerSocket(
                     StaticConfiguration.PORT,
@@ -237,8 +240,16 @@ public class Master implements Runnable {
             MultiMessage response = new MultiMessage();
 
             // Add slave IP-Address to network Information
+            // if slave is not on the same host
             InetAddress slaveAddress = this.slave.getInetAddress();
-            NetworkConfiguration.hosts.add(slaveAddress);
+            if (!NetworkConfiguration.ownAddresses.contains(slaveAddress)) {
+                NetworkConfiguration.hosts.add(slaveAddress);
+
+                // send new hosts list to all slaves
+                HostsPayload hostsPayload = new HostsPayload(NetworkConfiguration.hosts);
+                Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
+                this.broadcaster.send(hostsMessage);
+            }
 
             // create payload of primes
             PrimesPayload primesPayload = new PrimesPayload(getPrimes());
@@ -263,11 +274,6 @@ public class Master implements Runnable {
             Message sliceMessage = new Message(MessageType.MASTER_DO_WORK, this.currentSlice);
             response.addMessage(sliceMessage);
             log("Master - ConnectionHandler - " + this.slave + " - Sending new work to Slave: " + this.currentSlice);
-
-            // send new hosts list to all slaves
-            HostsPayload hostsPayload = new HostsPayload(NetworkConfiguration.hosts);
-            Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
-            this.broadcaster.send(hostsMessage);
 
             // send new unfinished slices to all slaves
             UnfinishedSlicesPayload unfinishedSlicesPayload = new UnfinishedSlicesPayload(getUnfinishedSlices());
