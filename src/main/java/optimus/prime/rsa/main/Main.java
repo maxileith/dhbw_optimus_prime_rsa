@@ -134,6 +134,7 @@ public class Main {
             // update masterAddress if master is lost
             if (LOST_MASTER) {
                 try {
+                    System.out.println(NetworkConfiguration.hosts);
                     NetworkConfiguration.masterAddress = NetworkConfiguration.hosts.get(0);
                 } catch (IndexOutOfBoundsException e) {
                     System.err.println("Main   - There are no known hosts left - " + e);
