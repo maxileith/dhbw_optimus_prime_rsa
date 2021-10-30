@@ -14,8 +14,6 @@ import java.util.*;
 
 public class Utils {
 
-    // TODO: maybe make an algorithm that makes slices that are equally hard to calculate
-
     public static Queue<SlicePayload> getSlices(int numberOfPrimes, int start, int end, long checksPerSlice) {
         final Queue<SlicePayload> slices = new LinkedList<>();
 
@@ -23,7 +21,10 @@ public class Utils {
         int currentEnd = 0;
 
         while (currentEnd != end) {
-            currentEnd = Math.round(numberOfPrimes - (int) Math.sqrt(Math.pow(numberOfPrimes - currentStart, 2) - 2 * checksPerSlice));
+            // Don't worry if you don't understand the following line of code.
+            // You need to reed the documentation to understand the derivation
+            // of this mathematical formula.
+            currentEnd = numberOfPrimes - (int) Math.sqrt(Math.pow(numberOfPrimes - currentStart, 2) - 2 * checksPerSlice);
             currentEnd = Math.min(currentEnd, end);
             SlicePayload slice = new SlicePayload(currentStart, currentEnd);
             slices.add(slice);
