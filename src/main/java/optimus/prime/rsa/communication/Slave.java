@@ -73,8 +73,9 @@ public class Slave implements Runnable {
                     Thread.sleep(5);
                 }
 
-                log("Slave  - New work is assigned to the workers");
                 // do the math
+                log("Slave  - Assigning new work to the workers ...");
+                int concurrentSlices = this.currentMinorSlices.size();
                 while (!this.currentMinorSlices.isEmpty()) {
                     this.cs.submit(new Worker(
                             this.currentMinorSlices.remove(),
@@ -84,7 +85,7 @@ public class Slave implements Runnable {
                 }
 
                 // collect the results
-                for (int resultsReceived = 0; resultsReceived < StaticConfiguration.SLAVE_WORKERS && this.running; resultsReceived++) {
+                for (int resultsReceived = 0; resultsReceived < concurrentSlices && this.running; resultsReceived++) {
                     try {
                         Future<SolutionPayload> f = this.cs.take();
                         SolutionPayload s = f.get();

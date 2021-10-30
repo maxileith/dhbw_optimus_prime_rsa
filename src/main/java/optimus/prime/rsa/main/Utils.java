@@ -18,18 +18,21 @@ public class Utils {
         final Queue<SlicePayload> slices = new LinkedList<>();
 
         int currentStart = start;
-        int currentEnd = 0;
+        int currentEnd;
 
-        while (currentEnd != end) {
+        do {
             // Don't worry if you don't understand the following line of code.
             // You need to reed the documentation to understand the derivation
             // of this mathematical formula.
-            currentEnd = numberOfPrimes - (int) Math.sqrt(Math.pow(numberOfPrimes - currentStart, 2) - 2 * checksPerSlice);
+            currentEnd = numberOfPrimes - (int) Math.round(Math.sqrt(Math.pow(numberOfPrimes - currentStart, 2) - 2 * checksPerSlice));
+            // current end is at least at current start
+            currentEnd = Math.max(currentEnd, currentStart);
+            // current end must be smaller or equal to end
             currentEnd = Math.min(currentEnd, end);
             SlicePayload slice = new SlicePayload(currentStart, currentEnd);
             slices.add(slice);
             currentStart = currentEnd + 1;
-        }
+        } while (currentEnd != end);
 
         return slices;
     }
@@ -40,20 +43,26 @@ public class Utils {
 
         double desiredPosition = start;
         int currentStart = start;
+        int currentEnd;
 
         do {
             desiredPosition += stepSize;
-            int currentEnd = (int) Math.round(desiredPosition);
 
             if (--n == 0) {
                 currentEnd = end;
+            } else {
+                currentEnd = (int) Math.round(desiredPosition);
+                // current end is at least at current start
+                currentEnd = Math.max(currentEnd, currentStart);
+                // current end must be smaller or equal to end
+                currentEnd = Math.min(currentEnd, end);
             }
 
             SlicePayload slice = new SlicePayload(currentStart, currentEnd);
             slices.add(slice);
 
             currentStart = currentEnd + 1;
-        } while (n != 0);
+        } while (currentEnd != end);
 
         return slices;
     }
