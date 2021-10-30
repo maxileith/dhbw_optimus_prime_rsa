@@ -46,7 +46,7 @@ public class Utils {
     }
 
     public static List<BigInteger> getPrimes(String primeList) {
-        List<BigInteger> primes = new ArrayList<>();
+        Set<BigInteger> primes = new HashSet<>();
 
         final String fileName = "primes" + primeList + ".txt";
         final InputStream stream = Main.class.getClassLoader().getResourceAsStream(fileName);
@@ -57,17 +57,14 @@ public class Utils {
             String line;
             while ((line = br.readLine()) != null) {
                 BigInteger value = new BigInteger(line);
-                // don't load duplicates
-                if (!primes.contains(value)) {
-                    primes.add(value);
-                }
+                primes.add(value);
             }
         } catch (IOException | NullPointerException e) {
             System.err.println("Couldn't load primes - " + e);
             System.exit(1);
         }
 
-        return primes;
+        return primes.stream().toList();
     }
 
     public static List<InetAddress> getOwnIPs() throws SocketException {
