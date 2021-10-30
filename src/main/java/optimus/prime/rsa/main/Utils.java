@@ -35,13 +35,26 @@ public class Utils {
     }
 
     public static Queue<SlicePayload> getNSlices(int start, int end, int n) {
-        int stepSize = (int) Math.ceil((float) (end - start + 1) / n);
         Queue<SlicePayload> slices = new LinkedList<>();
-        for (int i = start; i <= end; i += stepSize) {
-            int sliceEnd = Math.min(i + stepSize - 1, end);
-            SlicePayload slice = new SlicePayload(i, sliceEnd);
+        double stepSize = (end - start + 1) / (double) n;
+
+        double desiredPosition = start;
+        int currentStart = start;
+
+        do {
+            desiredPosition += stepSize;
+            int currentEnd = (int) Math.round(desiredPosition);
+
+            if (--n == 0) {
+                currentEnd = end;
+            }
+
+            SlicePayload slice = new SlicePayload(currentStart, currentEnd);
             slices.add(slice);
-        }
+
+            currentStart = currentEnd + 1;
+        } while (n != 0);
+
         return slices;
     }
 
