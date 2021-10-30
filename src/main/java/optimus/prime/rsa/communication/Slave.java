@@ -10,7 +10,6 @@ import optimus.prime.rsa.main.Main;
 import optimus.prime.rsa.main.Utils;
 
 import java.io.*;
-import java.math.BigInteger;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.*;
@@ -80,7 +79,7 @@ public class Slave implements Runnable {
                     this.cs.submit(new Worker(
                             this.currentMinorSlices.remove(),
                             StaticConfiguration.primes,
-                            MasterConfiguration.PUB_RSA_KEY
+                            StaticConfiguration.PUB_RSA_KEY
                     ));
                 }
 
@@ -249,7 +248,7 @@ public class Slave implements Runnable {
 
         private void handleMasterSendPubKeyRsa(Message m) {
             PubKeyRsaPayload pubKeyRsaPayload = (PubKeyRsaPayload) m.getPayload();
-            MasterConfiguration.PUB_RSA_KEY = pubKeyRsaPayload.getPubKeyRsa();
+            StaticConfiguration.PUB_RSA_KEY = pubKeyRsaPayload.getPubKeyRsa();
             log("Slave  - Receiver - set public key to \"" + pubKeyRsaPayload.getPubKeyRsa() + "\"");
         }
 
@@ -264,9 +263,7 @@ public class Slave implements Runnable {
         private void handleCipher(Message m) {
             CipherPayload cipherPayload = (CipherPayload) m.getPayload();
             log("Slave  - Receiver - received cipher: \"" + cipherPayload.getCipher() + "\"");
-            if (!MasterConfiguration.isMaster) {
-                MasterConfiguration.CIPHER = cipherPayload.getCipher();
-            }
+            StaticConfiguration.CIPHER = cipherPayload.getCipher();
         }
     }
 }

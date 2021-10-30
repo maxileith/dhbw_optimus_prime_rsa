@@ -8,4 +8,6 @@ public class StaticConfiguration {
     public static int SLAVE_WORKERS;
     public static final int MASTER_RESTART_TIMEOUT = 5000;
     public static List<BigInteger> primes = null;
+    public static BigInteger PUB_RSA_KEY;
+    public static String CIPHER;
 }

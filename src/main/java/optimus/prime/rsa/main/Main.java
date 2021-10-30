@@ -112,12 +112,12 @@ public class Main {
         StaticConfiguration.SLAVE_WORKERS = Integer.parseInt(ap.get("workers"));
         // pub-rsa-key key
         try {
-            MasterConfiguration.PUB_RSA_KEY = new BigInteger(ap.get("pub-rsa-key"));
+            StaticConfiguration.PUB_RSA_KEY = new BigInteger(ap.get("pub-rsa-key"));
         } catch (NumberFormatException ignored) {
-            MasterConfiguration.PUB_RSA_KEY = BigInteger.ZERO;
+            StaticConfiguration.PUB_RSA_KEY = BigInteger.ZERO;
         }
         // cipher key
-        MasterConfiguration.CIPHER = ap.get("cipher");
+        StaticConfiguration.CIPHER = ap.get("cipher");
         // master-slice-size key
         MasterConfiguration.MASTER_CHECKS_PER_SLICE = Long.parseLong(ap.get("master-checks-per-slice"));
         // max-slaves key

@@ -6,8 +6,6 @@ import java.math.BigInteger;
 import java.util.Queue;
 
 public class MasterConfiguration {
-    public static BigInteger PUB_RSA_KEY;
-    public static String CIPHER;
     public static long MASTER_CHECKS_PER_SLICE;
     public static int MAX_INCOMING_SLAVES;
     public static Queue<SlicePayload> slicesToDo = null;

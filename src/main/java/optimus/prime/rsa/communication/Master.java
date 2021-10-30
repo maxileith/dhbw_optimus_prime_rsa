@@ -1,7 +1,6 @@
 package optimus.prime.rsa.communication;
 
 import java.io.*;
-import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -42,8 +41,8 @@ public class Master implements Runnable {
             MasterConfiguration.slicesToDo = Utils.getSlices(StaticConfiguration.primes.size(), 0, StaticConfiguration.primes.size() - 1, MasterConfiguration.MASTER_CHECKS_PER_SLICE);
         }
         log("Master - slices: " + MasterConfiguration.slicesToDo);
-        log("Master - cipher: " + MasterConfiguration.CIPHER);
-        log("Master - public key: " + MasterConfiguration.PUB_RSA_KEY);
+        log("Master - cipher: " + StaticConfiguration.CIPHER);
+        log("Master - public key: " + StaticConfiguration.PUB_RSA_KEY);
 
         // reset connected hosts
         NetworkConfiguration.hosts = new ArrayList<>();
@@ -77,7 +76,7 @@ public class Master implements Runnable {
 
         if (this.solution != null) {
             RSAHelper helper = new RSAHelper();
-            log("Master - Decrypted text is \"" + helper.decrypt(this.solution.getPrime1().toString(), this.solution.getPrime2().toString(), MasterConfiguration.CIPHER) + "\"");
+            log("Master - Decrypted text is \"" + helper.decrypt(this.solution.getPrime1().toString(), this.solution.getPrime2().toString(), StaticConfiguration.CIPHER) + "\"");
         } else {
             log("Master - The solution cannot be found in the given prime numbers.");
         }
@@ -114,7 +113,6 @@ public class Master implements Runnable {
 
     private synchronized SlicePayload getNextSlice() throws NoSuchElementException {
         SlicePayload slice = MasterConfiguration.slicesToDo.remove();
-        // transfer index from ToDo to InProgress
         this.slicesInProgress.add(slice);
         return slice;
     }
@@ -128,10 +126,6 @@ public class Master implements Runnable {
         log("Master - Slice " + slice + " added back to queue");
         this.slicesInProgress.remove(slice);
         MasterConfiguration.slicesToDo.add(slice);
-    }
-
-    private synchronized List<BigInteger> getPrimes() {
-        return StaticConfiguration.primes;
     }
 
     private Queue<SlicePayload> getUnfinishedSlices() {
@@ -239,46 +233,44 @@ public class Master implements Runnable {
             log("Master - ConnectionHandler - " + this.slave + " - Slave wants to join");
             MultiMessage response = new MultiMessage();
 
-            // Add slave IP-Address to network Information
-            // if slave is not on the same host
             InetAddress slaveAddress = this.slave.getInetAddress();
+            // if slave is not on the same host provide information
+            // that is needed in case the master goes down
             if (!NetworkConfiguration.ownAddresses.contains(slaveAddress)) {
+                // Add slave IP-Address to network Information
                 NetworkConfiguration.hosts.add(slaveAddress);
+
+                // create payload of primes
+                PrimesPayload primesPayload = new PrimesPayload(StaticConfiguration.primes);
+                Message primesMessage = new Message(MessageType.MASTER_SEND_PRIMES, primesPayload);
+                response.addMessage(primesMessage);
+                log("Master - ConnectionHandler - " + this.slave + " - Sending primes to Slave");
+
+                // create payload for the public key
+                PubKeyRsaPayload pubKeyRsaPayload = new PubKeyRsaPayload(StaticConfiguration.PUB_RSA_KEY);
+                Message pubKeyRsaMessage = new Message(MessageType.MASTER_SEND_PUB_KEY_RSA, pubKeyRsaPayload);
+                response.addMessage(pubKeyRsaMessage);
+                log("Master - ConnectionHandler - " + this.slave + " - Sending the public key: \"" + StaticConfiguration.PUB_RSA_KEY + "\"");
+
+                // create payload for the cipher
+                CipherPayload cipherPayload = new CipherPayload(StaticConfiguration.CIPHER);
+                Message cipherMessage = new Message(MessageType.MASTER_CIPHER, cipherPayload);
+                response.addMessage(cipherMessage);
+                log("Master - ConnectionHandler - " + this.slave + " - Sending the cipher: \"" + StaticConfiguration.CIPHER + "\"");
 
                 // send new hosts list to all slaves
                 HostsPayload hostsPayload = new HostsPayload(NetworkConfiguration.hosts);
                 Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
                 this.broadcaster.send(hostsMessage);
+            } else {
+                log("Master - ConnectionHandler - " + this.slave + " - Skip sending of primes, public key, cipher and host list, because the slave is hosted on the same host as the master");
             }
-
-            // create payload of primes
-            PrimesPayload primesPayload = new PrimesPayload(getPrimes());
-            Message primesMessage = new Message(MessageType.MASTER_SEND_PRIMES, primesPayload);
-            response.addMessage(primesMessage);
-            log("Master - ConnectionHandler - " + this.slave + " - Sending primes to Slave");
-
-            // create payload for the public key
-            PubKeyRsaPayload pubKeyRsaPayload = new PubKeyRsaPayload(MasterConfiguration.PUB_RSA_KEY);
-            Message pubKeyRsaMessage = new Message(MessageType.MASTER_SEND_PUB_KEY_RSA, pubKeyRsaPayload);
-            response.addMessage(pubKeyRsaMessage);
-            log("Master - ConnectionHandler - " + this.slave + " - Sending the public key: \"" + MasterConfiguration.PUB_RSA_KEY + "\"");
-
-            // create payload for the cipher
-            CipherPayload cipherPayload = new CipherPayload(MasterConfiguration.CIPHER);
-            Message cipherMessage = new Message(MessageType.MASTER_CIPHER, cipherPayload);
-            response.addMessage(cipherMessage);
-            log("Master - ConnectionHandler - " + this.slave + " - Sending the cipher: \"" + MasterConfiguration.CIPHER + "\"");
 
             // create payload for next tasks
             this.currentSlice = getNextSlice();
             Message sliceMessage = new Message(MessageType.MASTER_DO_WORK, this.currentSlice);
             response.addMessage(sliceMessage);
             log("Master - ConnectionHandler - " + this.slave + " - Sending new work to Slave: " + this.currentSlice);
-
-            // send new unfinished slices to all slaves
-            UnfinishedSlicesPayload unfinishedSlicesPayload = new UnfinishedSlicesPayload(getUnfinishedSlices());
-            Message unfinishedSlicesMessage = new Message(MessageType.MASTER_UNFINISHED_SLICES, unfinishedSlicesPayload);
-            this.broadcaster.send(unfinishedSlicesMessage);
 
             return response;
         }
