@@ -6,6 +6,8 @@ public enum ConsoleColors {
 
     // color reset
     RESET("\033[0m"),
+    BOLD("\033[1m"),
+    UNDERLINE("\033[4m"),
 
     // Regular Colors
     BLACK("\033[0;30m"),    // BLACK
