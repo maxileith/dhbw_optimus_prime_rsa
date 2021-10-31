@@ -1,4 +1,4 @@
-package optimus.prime.rsa.communication.payloads;
+package optimus.prime.rsa.server.communication.payloads;
 
 import java.io.Serializable;
 

@@ -1,4 +1,4 @@
-package optimus.prime.rsa.main;
+package optimus.prime.rsa;
 
 
 @SuppressWarnings("unused")

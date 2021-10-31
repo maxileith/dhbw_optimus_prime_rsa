@@ -1,4 +1,4 @@
-package optimus.prime.rsa.config;
+package optimus.prime.rsa.server.config;
 
 import java.math.BigInteger;
 import java.util.List;

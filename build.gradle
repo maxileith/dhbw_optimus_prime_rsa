@@ -22,7 +22,7 @@ test {
 jar {
     manifest {
         attributes(
-                'Main-Class': 'optimus.prime.rsa.main.Main',
+                'Main-Class': 'optimus.prime.rsa.server.Main',
         )
     }
 }

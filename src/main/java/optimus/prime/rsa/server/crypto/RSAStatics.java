@@ -1,4 +1,4 @@
-package optimus.prime.rsa.crypto;
+package optimus.prime.rsa.server.crypto;
 
 import java.math.BigInteger;
 

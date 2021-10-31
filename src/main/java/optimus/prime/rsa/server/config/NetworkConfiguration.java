@@ -1,4 +1,4 @@
-package optimus.prime.rsa.config;
+package optimus.prime.rsa.server.config;
 
 import java.net.InetAddress;
 import java.util.List;

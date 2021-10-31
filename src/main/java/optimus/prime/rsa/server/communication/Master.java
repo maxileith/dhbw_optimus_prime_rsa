@@ -1,4 +1,4 @@
-package optimus.prime.rsa.communication;
+package optimus.prime.rsa.server.communication;
 
 import java.io.*;
 import java.net.InetAddress;
@@ -7,12 +7,13 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.*;
 
-import optimus.prime.rsa.communication.payloads.*;
-import optimus.prime.rsa.config.MasterConfiguration;
-import optimus.prime.rsa.config.NetworkConfiguration;
-import optimus.prime.rsa.config.StaticConfiguration;
-import optimus.prime.rsa.crypto.RSAHelper;
-import optimus.prime.rsa.main.*;
+import optimus.prime.rsa.ConsoleColors;
+import optimus.prime.rsa.server.Utils;
+import optimus.prime.rsa.server.communication.payloads.*;
+import optimus.prime.rsa.server.config.MasterConfiguration;
+import optimus.prime.rsa.server.config.NetworkConfiguration;
+import optimus.prime.rsa.server.config.StaticConfiguration;
+import optimus.prime.rsa.server.crypto.RSAHelper;
 
 public class Master implements Runnable {
 
