@@ -1,4 +1,4 @@
-package optimus.prime.rsa.crypto;
+package optimus.prime.rsa.server.crypto;
 
 import org.bouncycastle.crypto.AsymmetricBlockCipher;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;

@@ -1,6 +1,6 @@
-package optimus.prime.rsa.main;
+package optimus.prime.rsa.server;
 
-import optimus.prime.rsa.communication.payloads.SlicePayload;
+import optimus.prime.rsa.server.communication.payloads.SlicePayload;
 
 import java.io.BufferedReader;
 import java.io.IOException;

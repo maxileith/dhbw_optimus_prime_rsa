@@ -1,8 +1,8 @@
-package optimus.prime.rsa.crypto;
+package optimus.prime.rsa.server.crypto;
 
-import optimus.prime.rsa.communication.payloads.SlicePayload;
-import optimus.prime.rsa.communication.payloads.SolutionPayload;
-import optimus.prime.rsa.main.ConsoleColors;
+import optimus.prime.rsa.server.communication.payloads.SlicePayload;
+import optimus.prime.rsa.server.communication.payloads.SolutionPayload;
+import optimus.prime.rsa.ConsoleColors;
 
 import java.math.BigInteger;
 import java.util.List;

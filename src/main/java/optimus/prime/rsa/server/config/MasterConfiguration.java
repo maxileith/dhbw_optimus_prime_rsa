@@ -1,6 +1,6 @@
-package optimus.prime.rsa.config;
+package optimus.prime.rsa.server.config;
 
-import optimus.prime.rsa.communication.payloads.SlicePayload;
+import optimus.prime.rsa.server.communication.payloads.SlicePayload;
 
 import java.util.Queue;
 

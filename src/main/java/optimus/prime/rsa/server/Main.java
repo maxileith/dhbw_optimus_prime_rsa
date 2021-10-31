@@ -1,12 +1,12 @@
-package optimus.prime.rsa.main;
+package optimus.prime.rsa.server;
 
 import optimus.prime.rsa.argumentparser.ArgumentParser;
 import optimus.prime.rsa.argumentparser.ArgumentBlueprint;
-import optimus.prime.rsa.communication.Master;
-import optimus.prime.rsa.communication.Slave;
-import optimus.prime.rsa.config.MasterConfiguration;
-import optimus.prime.rsa.config.NetworkConfiguration;
-import optimus.prime.rsa.config.StaticConfiguration;
+import optimus.prime.rsa.server.communication.Master;
+import optimus.prime.rsa.server.communication.Slave;
+import optimus.prime.rsa.server.config.MasterConfiguration;
+import optimus.prime.rsa.server.config.NetworkConfiguration;
+import optimus.prime.rsa.server.config.StaticConfiguration;
 
 import java.math.BigInteger;
 import java.net.InetAddress;
