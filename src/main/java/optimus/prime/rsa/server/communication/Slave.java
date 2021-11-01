@@ -247,7 +247,7 @@ public class Slave implements Runnable {
         private void handleMasterSendPrimes(Message m) {
             PrimesPayload primesPayload = (PrimesPayload) m.getPayload();
             StaticConfiguration.primes = primesPayload.getPrimes();
-            log("set primes");
+            log("set primes - length: " + StaticConfiguration.primes.size());
         }
 
         private void handleMasterSendPubKeyRsa(Message m) {
