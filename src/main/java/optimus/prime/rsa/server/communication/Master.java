@@ -106,8 +106,10 @@ public class Master implements Runnable {
     }
 
     private synchronized SlicePayload getNextSlice(int workers) throws NoSuchElementException {
+        SlicePayload slice;
+
         if (!MasterConfiguration.lostSlices.isEmpty()) {
-            return MasterConfiguration.lostSlices.remove();
+            slice = MasterConfiguration.lostSlices.remove();
         } else if (MasterConfiguration.currentSliceStart != StaticConfiguration.primes.size()) {
             int numberOfPrimes = StaticConfiguration.primes.size();
             int currentStart = MasterConfiguration.currentSliceStart;
@@ -122,12 +124,14 @@ public class Master implements Runnable {
             // current end must be smaller or equal to end
             sliceEnd = Math.min(sliceEnd, numberOfPrimes - 1);
 
-            SlicePayload slice = new SlicePayload(currentStart, sliceEnd);
+            slice = new SlicePayload(currentStart, sliceEnd);
             MasterConfiguration.currentSliceStart = slice.getEnd() + 1;
-
-            return slice;
+        } else {
+            throw new NoSuchElementException();
         }
-        throw new NoSuchElementException();
+
+        this.slicesInProgress.add(slice);
+        return slice;
     }
 
     private synchronized void markSliceAsDone(SlicePayload slice) {
