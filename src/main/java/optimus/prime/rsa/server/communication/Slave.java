@@ -238,7 +238,7 @@ public class Slave implements Runnable {
         private void handleDoWork(Message m) {
             SlicePayload slicePayload = (SlicePayload) m.getPayload();
             setCurrentSlice(slicePayload);
-            log("Received new working package");
+            log("Received new slice to do - " + slicePayload);
         }
 
         public void stopReceiver() {
