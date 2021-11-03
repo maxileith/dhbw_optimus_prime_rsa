@@ -13,7 +13,7 @@ simultaneously to find a solution.
     - The _master_ is the process that tells the other processes (_slaves_) what their task is. In addition, information
       about the _master_ is distributed, which is needed should a _slave_ take over the role of the _master_ in the
       future.
-    - _Slaves_ provide workers that process the task assigned by the _master_. If a _master_ fails, a slave becomes
+    - _Slaves_ provide workers that process the task assigned by the _master_. If a _master_ fails, a _slave_ becomes
       the _master_.
 - The process that is the master also hosts a slave unless otherwise specified.
 
@@ -21,10 +21,14 @@ simultaneously to find a solution.
 
 The master must be started first. After that, slaves can connect.
 
-In the following, the following preconditions are assumed:
+**Requirements:**
+
+* The Java Runtime supports class file version `60.0`
+* On each host, the firewall is opened for port `2504` or as specified in `--port` for incoming TCP traffic.
+
+In the following, the following **preconditions are assumed**:
 
 * The current master-ip is `192.168.42.100`
-* The Java Runtime supports class file version `60.0`
 * _Master_ and _Slaves_ are on the same network
 
 ### Starting the _master_
