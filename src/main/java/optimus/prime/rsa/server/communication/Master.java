@@ -332,7 +332,7 @@ public class Master implements Runnable {
                 this.broadcaster.send(progressMessage);
 
             } catch (NoSuchElementException ignored) {
-                log("No more slices to do -> sending MASTER_EXIT to Broadcaster");
+                log("No more slices to do -> sending MASTER_EXIT");
                 Message exitMessage = new Message(MessageType.MASTER_EXIT);
                 response.addMessage(exitMessage);
             }
