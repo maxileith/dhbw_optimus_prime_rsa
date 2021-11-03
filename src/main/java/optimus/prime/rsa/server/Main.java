@@ -1,5 +1,6 @@
 package optimus.prime.rsa.server;
 
+import optimus.prime.rsa.ConsoleColors;
 import optimus.prime.rsa.argumentparser.ArgumentParser;
 import optimus.prime.rsa.argumentparser.ArgumentBlueprint;
 import optimus.prime.rsa.server.communication.Master;
@@ -93,7 +94,7 @@ public class Main {
             System.out.println("Main   - own ips: ");
             NetworkConfiguration.ownAddresses.forEach(e -> System.out.println(e.getHostAddress()));
         } catch (SocketException e) {
-            System.err.println("Main   - unable to load own ips - " + e);
+            Utils.err("Main   - unable to load own ips - " + e);
             System.exit(1);
         }
 
@@ -102,7 +103,7 @@ public class Main {
         try {
             masterAddress = InetAddress.getByName(ap.get("master-address"));
         } catch (UnknownHostException ignored) {
-            System.err.println("Main   - " + ap.get("master-address") + " is not a valid hostname / ip-address");
+            Utils.err("Main   - " + ap.get("master-address") + " is not a valid hostname / ip-address");
             System.exit(0);
         }
         NetworkConfiguration.masterAddress = masterAddress;
@@ -137,7 +138,7 @@ public class Main {
                 try {
                     NetworkConfiguration.masterAddress = NetworkConfiguration.hosts.get(0);
                 } catch (IndexOutOfBoundsException e) {
-                    System.err.println("Main   - There are no known hosts left - " + e);
+                    Utils.err("Main   - There are no known hosts left - " + e);
                     return;
                 }
             }
@@ -145,6 +146,8 @@ public class Main {
             MasterConfiguration.isMaster = NetworkConfiguration.ownAddresses.contains(NetworkConfiguration.masterAddress);
             // give the new master some time to start
             if (!MasterConfiguration.isMaster && LOST_MASTER) {
+                System.out.println("Main   - The new master is " + NetworkConfiguration.masterAddress.getHostAddress());
+                System.out.println("Main   - Waiting " + StaticConfiguration.MASTER_RESTART_TIMEOUT + "ms for the new master to start ...");
                 try {
                     for (int i = 0; i < StaticConfiguration.MASTER_RESTART_TIMEOUT; i += 50) {
                         // noinspection BusyWait
@@ -153,8 +156,12 @@ public class Main {
                     }
                     System.out.println();
                 } catch (InterruptedException e) {
-                    System.err.println("Main   - error while waiting for the MASTER_RESTART_TIMEOUT to expire - " + e);
+                    Utils.err("Main   - error while waiting for the MASTER_RESTART_TIMEOUT to expire - " + e);
                 }
+                System.out.println("Main   - Starting Slave again ...");
+            } else if (LOST_MASTER) {
+                System.out.println("Main   - This host is the new master.");
+                System.out.println("Main   - Starting Master and Slave ...");
             }
 
             // Start master if not slave
@@ -185,7 +192,7 @@ public class Main {
                     masterThread.join();
                 }
             } catch (InterruptedException e) {
-                System.err.println("Main   - failed to join threads - " + e);
+                Utils.err("Main   - failed to join threads - " + e);
                 return;
             }
         } while (LOST_MASTER);

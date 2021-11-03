@@ -1,11 +1,9 @@
 package optimus.prime.rsa.server;
 
+import optimus.prime.rsa.ConsoleColors;
 import optimus.prime.rsa.server.communication.payloads.SlicePayload;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -71,18 +69,26 @@ public class Utils {
         Set<BigInteger> primes = new HashSet<>();
 
         final String fileName = "primes" + primeList + ".txt";
-        final InputStream stream = Main.class.getClassLoader().getResourceAsStream(fileName);
+        InputStream stream = Main.class.getClassLoader().getResourceAsStream(fileName);
 
-        // stream could be null: catching NullPointerException
-        // noinspection ConstantConditions
+        if (stream == null) {
+            File f = new File(primeList);
+            try {
+                stream = new FileInputStream(f);
+            } catch (FileNotFoundException e) {
+                Utils.err("Couldn't load primes - " + e);
+                System.exit(1);
+            }
+        }
+
         try (BufferedReader br = new BufferedReader(new InputStreamReader(stream))) {
             String line;
             while ((line = br.readLine()) != null) {
                 BigInteger value = new BigInteger(line);
                 primes.add(value);
             }
-        } catch (IOException | NullPointerException e) {
-            System.err.println("Couldn't load primes - " + e);
+        } catch (IOException e) {
+            Utils.err("Couldn't load primes - " + e);
             System.exit(1);
         }
 
@@ -101,5 +107,11 @@ public class Utils {
         }
 
         return ips;
+    }
+
+    // wrapper method that prints errors red. without that wrapper function
+    // errors are printed in the default color when exporting as jar
+    public static void err(String s) {
+        System.err.println(ConsoleColors.RED + s + ConsoleColors.RESET);
     }
 }

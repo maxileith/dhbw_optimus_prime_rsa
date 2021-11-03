@@ -172,7 +172,7 @@ public class Master implements Runnable {
     }
 
     private static void err(String s) {
-        System.err.println("Master - " + s);
+        Utils.err("Master - " + s);
     }
 
     private class ConnectionHandler implements Runnable {
@@ -349,7 +349,7 @@ public class Master implements Runnable {
         }
 
         private void err(String s) {
-            System.err.println("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - " + s);
+            Utils.err("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - " + s);
         }
     }
 

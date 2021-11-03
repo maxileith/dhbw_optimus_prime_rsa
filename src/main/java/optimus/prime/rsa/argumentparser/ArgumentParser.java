@@ -1,5 +1,7 @@
 package optimus.prime.rsa.argumentparser;
 
+import optimus.prime.rsa.server.Utils;
+
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -29,7 +31,7 @@ public class ArgumentParser {
 
             Matcher keyMatch = keyPattern.matcher(args[i]);
             if (!keyMatch.matches()) {
-                System.err.println("Expected key, got \"" + args[i] + "\"");
+                Utils.err("Expected key, got \"" + args[i] + "\"");
                 this.help();
             }
             String key = keyMatch.group(1);
@@ -37,15 +39,15 @@ public class ArgumentParser {
             i++;
             try {
                 if (keyPattern.matcher(args[i]).matches()) {
-                    System.err.println("Expected value for key \"" + key + "\"");
+                    Utils.err("Expected value for key \"" + key + "\"");
                     this.help();
                 }
             } catch (ArrayIndexOutOfBoundsException ignored) {
-                System.err.println("Expected value for key \"" + key + "\"");
+                Utils.err("Expected value for key \"" + key + "\"");
                 this.help();
             }
             if (keyPattern.matcher(args[i]).matches()) {
-                System.err.println("Expected value for key \"" + key + "\"");
+                Utils.err("Expected value for key \"" + key + "\"");
                 this.help();
             }
             String value = args[i];
@@ -53,7 +55,7 @@ public class ArgumentParser {
             try {
                 this.map.get(key).setValue(value);
             } catch (NullPointerException ignored) {
-                System.err.println("Unexpected key \"" + key + "\"");
+                Utils.err("Unexpected key \"" + key + "\"");
                 this.help();
             }
         }
@@ -64,7 +66,7 @@ public class ArgumentParser {
     private void checkIntegrity() {
         for (ArgumentBlueprint a : this.list) {
             if (a.isRequired() && a.getValue() == null) {
-                System.err.println("key \"" + a.getKey() + "\" is required.");
+                Utils.err("key \"" + a.getKey() + "\" is required.");
                 this.help();
             }
         }

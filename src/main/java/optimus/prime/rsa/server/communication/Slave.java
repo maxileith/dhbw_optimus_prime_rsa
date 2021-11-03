@@ -176,7 +176,7 @@ public class Slave implements Runnable {
     }
 
     private static void err(String s) {
-        System.err.println("Slave  - " + s);
+        Utils.err("Slave  - " + s);
     }
 
     private class Receiver implements Runnable {
@@ -275,7 +275,7 @@ public class Slave implements Runnable {
         }
 
         private static void err(String s) {
-            System.err.println("Slave  - Receiver - " + s);
+            Utils.err("Slave  - Receiver - " + s);
         }
     }
 }
