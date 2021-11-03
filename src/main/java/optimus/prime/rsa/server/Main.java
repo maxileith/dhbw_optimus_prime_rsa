@@ -34,7 +34,7 @@ public class Main {
                 new ArgumentBlueprint(
                         "master-checks-per-slice-per-worker",
                         false,
-                        "master-only: defines the number of checks per slice",
+                        "master-only: defines the number of checks per slice per worker",
                         "150000"
                 )
         );
@@ -42,7 +42,7 @@ public class Main {
                 new ArgumentBlueprint(
                         "port",
                         false,
-                        "defines the TCP port",
+                        "defines the TCP port to use for communication",
                         "2504"
                 )
         );
