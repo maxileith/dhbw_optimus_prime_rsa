@@ -37,22 +37,9 @@ public class Master implements Runnable {
         if (StaticConfiguration.primes == null) {
             StaticConfiguration.primes = Utils.getPrimes(primeList);
         }
-        // same reason as for the primes above
-        if (MasterConfiguration.slicesToDo == null) {
-            MasterConfiguration.slicesToDo = Utils.getSlices(StaticConfiguration.primes.size(), 0, StaticConfiguration.primes.size() - 1, MasterConfiguration.MASTER_CHECKS_PER_SLICE);
-        }
         log("cipher: " + StaticConfiguration.CIPHER);
         log("public key: " + StaticConfiguration.PUB_RSA_KEY);
-        log("doing " + MasterConfiguration.MASTER_CHECKS_PER_SLICE + " checks per slice");
-        List<SlicePayload> slicesToDoList = MasterConfiguration.slicesToDo.stream().toList();
-        StringBuilder slicesLogString = new StringBuilder();
-        for (int i = 0; i < slicesToDoList.size(); i += 6) {
-            slicesLogString.append("\n");
-            for (int j = 0; j < 6 && i + j < slicesToDoList.size(); j++) {
-                slicesLogString.append(String.format("%17s", slicesToDoList.get(i + j).toString()));
-            }
-        }
-        log("slices:" + slicesLogString);
+        log("doing " + MasterConfiguration.MASTER_CHECKS_PER_SLICE_PER_WORKER + " checks per slice per worker");
 
         // reset connected hosts
         NetworkConfiguration.hosts = new ArrayList<>();
@@ -96,7 +83,7 @@ public class Master implements Runnable {
     }
 
     private void distributeConnections() throws IOException {
-        while (!this.serverSocket.isClosed() && this.solution == null && (!MasterConfiguration.slicesToDo.isEmpty() || !this.slicesInProgress.isEmpty())) {
+        while (!this.serverSocket.isClosed() && this.solution == null && (MasterConfiguration.currentSliceStart != StaticConfiguration.primes.size() || !this.slicesInProgress.isEmpty() || !MasterConfiguration.lostSlices.isEmpty())) {
             try {
                 Socket slave = this.serverSocket.accept();
                 log("Connection from " + slave + " established.");
@@ -118,10 +105,29 @@ public class Master implements Runnable {
         log("Solution found: " + s);
     }
 
-    private synchronized SlicePayload getNextSlice() throws NoSuchElementException {
-        SlicePayload slice = MasterConfiguration.slicesToDo.remove();
-        this.slicesInProgress.add(slice);
-        return slice;
+    private synchronized SlicePayload getNextSlice(int workers) throws NoSuchElementException {
+        if (!MasterConfiguration.lostSlices.isEmpty()) {
+            return MasterConfiguration.lostSlices.remove();
+        } else if (MasterConfiguration.currentSliceStart != StaticConfiguration.primes.size()) {
+            int numberOfPrimes = StaticConfiguration.primes.size();
+            int currentStart = MasterConfiguration.currentSliceStart;
+            long checksPerSlice = workers * MasterConfiguration.MASTER_CHECKS_PER_SLICE_PER_WORKER;
+
+            // Don't worry if you don't understand the following line of code.
+            // You need to reed the documentation to understand the derivation
+            // of this mathematical formula.
+            int sliceEnd = numberOfPrimes - (int) Math.round(Math.sqrt(Math.pow(numberOfPrimes - currentStart, 2) - 2 * checksPerSlice));
+            // current end is at least at current start
+            sliceEnd = Math.max(sliceEnd, currentStart);
+            // current end must be smaller or equal to end
+            sliceEnd = Math.min(sliceEnd, numberOfPrimes - 1);
+
+            SlicePayload slice = new SlicePayload(currentStart, sliceEnd);
+            MasterConfiguration.currentSliceStart = slice.getEnd() + 1;
+
+            return slice;
+        }
+        throw new NoSuchElementException();
     }
 
     private synchronized void markSliceAsDone(SlicePayload slice) {
@@ -130,15 +136,17 @@ public class Master implements Runnable {
     }
 
     private synchronized void abortSlice(SlicePayload slice) {
-        log("Slice " + slice + " added back to queue");
+        log("Slice " + slice + " added to lost slices");
         this.slicesInProgress.remove(slice);
-        MasterConfiguration.slicesToDo.add(slice);
+        MasterConfiguration.lostSlices.add(slice);
     }
 
-    private Queue<SlicePayload> getUnfinishedSlices() {
-        final Queue<SlicePayload> unfinishedSlices = new LinkedList<>(MasterConfiguration.slicesToDo);
-        unfinishedSlices.addAll(this.slicesInProgress);
-        return unfinishedSlices;
+    private Queue<SlicePayload> getLostSlices() {
+        final Queue<SlicePayload> lostSlices = new LinkedList<>(MasterConfiguration.lostSlices);
+        // slices in progress are lost as well when the
+        // master dies.
+        lostSlices.addAll(this.slicesInProgress);
+        return lostSlices;
     }
 
     private void stop() {
@@ -182,6 +190,7 @@ public class Master implements Runnable {
         private final Broadcaster broadcaster;
 
         private SlicePayload currentSlice;
+        private int workers;
 
         public ConnectionHandler(Socket slave, Broadcaster broadcaster) {
             this.slave = slave;
@@ -236,7 +245,7 @@ public class Master implements Runnable {
         private MultiMessage handleMessage(Message m) {
             log("Received message");
             return switch (m.getType()) {
-                case SLAVE_JOIN -> this.handleJoin();
+                case SLAVE_JOIN -> this.handleJoin(m);
                 case SLAVE_FINISHED_WORK -> this.handleSlaveFinishedWork();
                 case SLAVE_SOLUTION_FOUND -> this.handleSolutionFound(m);
                 case SLAVE_EXIT_ACKNOWLEDGE -> this.handleExitAcknowledge();
@@ -244,8 +253,12 @@ public class Master implements Runnable {
             };
         }
 
-        private MultiMessage handleJoin() {
-            log("Slave wants to join");
+        private MultiMessage handleJoin(Message m) {
+            JoinPayload joinPayload = (JoinPayload) m.getPayload();
+            this.workers = joinPayload.getWorkers();
+
+            log("Slave wants to join with " + this.workers + " workers");
+
             MultiMessage response = new MultiMessage();
 
             InetAddress slaveAddress = this.slave.getInetAddress();
@@ -282,10 +295,15 @@ public class Master implements Runnable {
             }
 
             // create payload for next tasks
-            this.currentSlice = getNextSlice();
+            this.currentSlice = getNextSlice(this.workers);
             Message sliceMessage = new Message(MessageType.MASTER_DO_WORK, this.currentSlice);
             response.addMessage(sliceMessage);
             log("Sending new work to Slave: " + this.currentSlice);
+
+            // send progress to all slaves
+            ProgressPayload progressPayload = new ProgressPayload(getLostSlices(), MasterConfiguration.currentSliceStart);
+            Message progressMessage = new Message(MessageType.MASTER_LOST_SLICES, progressPayload);
+            this.broadcaster.send(progressMessage);
 
             return response;
         }
@@ -299,15 +317,15 @@ public class Master implements Runnable {
 
             // create new slice for slave
             try {
-                this.currentSlice = getNextSlice();
+                this.currentSlice = getNextSlice(this.workers);
                 log("Sending new slice to slave: " + this.currentSlice);
                 Message sliceMessage = new Message(MessageType.MASTER_DO_WORK, this.currentSlice);
                 response.addMessage(sliceMessage);
 
-                // send new unfinished slices to all slaves
-                UnfinishedSlicesPayload unfinishedSlicesPayload = new UnfinishedSlicesPayload(getUnfinishedSlices());
-                Message unfinishedSlicesMessage = new Message(MessageType.MASTER_UNFINISHED_SLICES, unfinishedSlicesPayload);
-                this.broadcaster.send(unfinishedSlicesMessage);
+                // send progress to all slaves
+                ProgressPayload progressPayload = new ProgressPayload(getLostSlices(), MasterConfiguration.currentSliceStart);
+                Message progressMessage = new Message(MessageType.MASTER_LOST_SLICES, progressPayload);
+                this.broadcaster.send(progressMessage);
 
             } catch (NoSuchElementException ignored) {
                 log("No more slices to do -> sending MASTER_EXIT to Broadcaster");

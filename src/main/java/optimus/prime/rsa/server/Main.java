@@ -1,6 +1,5 @@
 package optimus.prime.rsa.server;
 
-import optimus.prime.rsa.ConsoleColors;
 import optimus.prime.rsa.argumentparser.ArgumentParser;
 import optimus.prime.rsa.argumentparser.ArgumentBlueprint;
 import optimus.prime.rsa.server.communication.Master;
@@ -31,10 +30,10 @@ public class Main {
         );
         ap.addArgument(
                 new ArgumentBlueprint(
-                        "master-checks-per-slice",
+                        "master-checks-per-slice-per-worker",
                         false,
                         "master-only: defines the number of checks per slice",
-                        "1000000"
+                        "150000"
                 )
         );
         ap.addArgument(
@@ -121,7 +120,7 @@ public class Main {
         // cipher key
         StaticConfiguration.CIPHER = ap.get("cipher");
         // master-slice-size key
-        MasterConfiguration.MASTER_CHECKS_PER_SLICE = Long.parseLong(ap.get("master-checks-per-slice"));
+        MasterConfiguration.MASTER_CHECKS_PER_SLICE_PER_WORKER = Long.parseLong(ap.get("master-checks-per-slice-per-worker"));
         // max-slaves key
         MasterConfiguration.MAX_INCOMING_SLAVES = Integer.parseInt(ap.get("max-slaves"));
 

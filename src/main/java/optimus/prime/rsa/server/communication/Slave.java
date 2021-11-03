@@ -60,7 +60,9 @@ public class Slave implements Runnable {
         try {
             log("Sending hello message to master");
 
-            Message joinMessage = new Message(MessageType.SLAVE_JOIN);
+            // sending join message to the master incl. the number of workers
+            JoinPayload joinPayload = new JoinPayload(StaticConfiguration.SLAVE_WORKERS);
+            Message joinMessage = new Message(MessageType.SLAVE_JOIN, joinPayload);
             this.objectOutputStream.writeObject(joinMessage);
             this.objectOutputStream.flush();
 
@@ -218,7 +220,7 @@ public class Slave implements Runnable {
                     case MASTER_EXIT -> this.stopReceiver();
                     case MASTER_SEND_PRIMES -> this.handleMasterSendPrimes(m);
                     case MASTER_SEND_PUB_KEY_RSA -> this.handleMasterSendPubKeyRsa(m);
-                    case MASTER_UNFINISHED_SLICES -> this.handleUnfinishedSlicesUpdate(m);
+                    case MASTER_LOST_SLICES -> this.handleProgressUpdate(m);
                     case MASTER_CIPHER -> this.handleCipher(m);
                     default -> log("Unknown message type");
                 }
@@ -256,11 +258,12 @@ public class Slave implements Runnable {
             log("set public key to \"" + pubKeyRsaPayload.getPubKeyRsa() + "\"");
         }
 
-        private void handleUnfinishedSlicesUpdate(Message m) {
-            UnfinishedSlicesPayload unfinishedSlicesPayload = (UnfinishedSlicesPayload) m.getPayload();
-            log("received update of unfinished work");
+        private void handleProgressUpdate(Message m) {
+            ProgressPayload progressPayload = (ProgressPayload) m.getPayload();
+            log("received update of progress");
             if (!MasterConfiguration.isMaster) {
-                MasterConfiguration.slicesToDo = unfinishedSlicesPayload.getUnfinishedSlices();
+                MasterConfiguration.lostSlices = progressPayload.getLostSlices();
+                MasterConfiguration.currentSliceStart = progressPayload.getCurrentSliceStart();
             }
         }
 

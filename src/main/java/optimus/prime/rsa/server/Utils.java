@@ -12,29 +12,6 @@ import java.util.*;
 
 public class Utils {
 
-    public static Queue<SlicePayload> getSlices(int numberOfPrimes, int start, int end, long checksPerSlice) {
-        final Queue<SlicePayload> slices = new LinkedList<>();
-
-        int currentStart = start;
-        int currentEnd;
-
-        do {
-            // Don't worry if you don't understand the following line of code.
-            // You need to reed the documentation to understand the derivation
-            // of this mathematical formula.
-            currentEnd = numberOfPrimes - (int) Math.round(Math.sqrt(Math.pow(numberOfPrimes - currentStart, 2) - 2 * checksPerSlice));
-            // current end is at least at current start
-            currentEnd = Math.max(currentEnd, currentStart);
-            // current end must be smaller or equal to end
-            currentEnd = Math.min(currentEnd, end);
-            SlicePayload slice = new SlicePayload(currentStart, currentEnd);
-            slices.add(slice);
-            currentStart = currentEnd + 1;
-        } while (currentEnd != end);
-
-        return slices;
-    }
-
     public static Queue<SlicePayload> getNSlices(int start, int end, int n) {
         Queue<SlicePayload> slices = new LinkedList<>();
         double stepSize = (end - start + 1) / (double) n;
