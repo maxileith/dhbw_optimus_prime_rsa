@@ -11,4 +11,5 @@ public class MasterConfiguration {
     public static int currentSliceStart = 0;
     public static Queue<SlicePayload> lostSlices = new LinkedList<>();
     public static boolean isMaster = false;
+    public static long startMillis;
 }

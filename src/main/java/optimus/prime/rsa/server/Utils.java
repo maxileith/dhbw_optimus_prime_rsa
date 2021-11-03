@@ -87,7 +87,8 @@ public class Utils {
     }
 
     // wrapper method that prints errors red. without that wrapper function
-    // errors are printed in the default color when exporting as jar
+    // errors are printed in the default color when exporting as jar, e.g.
+    // white in Windows Terminal
     public static void err(String s) {
         System.err.println(ConsoleColors.RED + s + ConsoleColors.RESET);
     }

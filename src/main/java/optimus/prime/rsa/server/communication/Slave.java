@@ -224,6 +224,7 @@ public class Slave implements Runnable {
                     case MASTER_SEND_PUB_KEY_RSA -> this.handleMasterSendPubKeyRsa(m);
                     case MASTER_LOST_SLICES -> this.handleProgressUpdate(m);
                     case MASTER_CIPHER -> this.handleCipher(m);
+                    case MASTER_START_MILLIS -> this.handleStartMillis(m);
                     default -> log("Unknown message type");
                 }
             }
@@ -273,6 +274,12 @@ public class Slave implements Runnable {
             CipherPayload cipherPayload = (CipherPayload) m.getPayload();
             log("received cipher: \"" + cipherPayload.getCipher() + "\"");
             StaticConfiguration.CIPHER = cipherPayload.getCipher();
+        }
+
+        private void handleStartMillis(Message m) {
+            StartMillisPayload startMillisPayload = (StartMillisPayload) m.getPayload();
+            log("received start millis: " + startMillisPayload.getStartMillis());
+            MasterConfiguration.startMillis = startMillisPayload.getStartMillis();
         }
 
         private static void log(String s) {

@@ -6,6 +6,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import optimus.prime.rsa.ConsoleColors;
 import optimus.prime.rsa.server.Utils;
@@ -60,6 +61,9 @@ public class Master implements Runnable {
 
     @Override
     public void run() {
+        MasterConfiguration.startMillis = System.currentTimeMillis();
+        log("start millis: " + MasterConfiguration.startMillis);
+
         log("starting broadcaster ...");
         this.broadcasterThread.start();
 
@@ -78,6 +82,12 @@ public class Master implements Runnable {
         } else {
             log("The solution cannot be found in the given prime numbers.");
         }
+
+        long endMillis = System.currentTimeMillis();
+        long duration = endMillis - MasterConfiguration.startMillis;
+
+        log("end millis: " + endMillis);
+        log("The whole process (including all masters) took " + TimeUnit.MILLISECONDS.toMinutes(duration) + "m" + TimeUnit.MILLISECONDS.toSeconds(duration) % 60 + "s" + duration % 1000 + "ms");
 
         log("Thread terminated");
     }
@@ -289,6 +299,12 @@ public class Master implements Runnable {
                 Message cipherMessage = new Message(MessageType.MASTER_CIPHER, cipherPayload);
                 response.addMessage(cipherMessage);
                 log("Sending the cipher: \"" + StaticConfiguration.CIPHER + "\"");
+
+                // create payload for the start time
+                StartMillisPayload startMillisPayload = new StartMillisPayload(MasterConfiguration.startMillis);
+                Message startMillisMessage = new Message(MessageType.MASTER_START_MILLIS, startMillisPayload);
+                response.addMessage(startMillisMessage);
+                log("Sending the start millis: " + MasterConfiguration.startMillis);
 
                 // send new hosts list to all slaves
                 HostsPayload hostsPayload = new HostsPayload(NetworkConfiguration.hosts);
