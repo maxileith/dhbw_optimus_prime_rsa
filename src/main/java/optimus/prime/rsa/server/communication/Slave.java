@@ -2,6 +2,7 @@ package optimus.prime.rsa.server.communication;
 
 import optimus.prime.rsa.server.communication.payloads.*;
 import optimus.prime.rsa.server.config.MasterConfiguration;
+import optimus.prime.rsa.server.config.SlaveConfiguration;
 import optimus.prime.rsa.server.crypto.Worker;
 import optimus.prime.rsa.server.config.NetworkConfiguration;
 import optimus.prime.rsa.server.config.StaticConfiguration;
@@ -35,7 +36,7 @@ public class Slave implements Runnable {
             );
             log("established connection to master");
 
-            this.es = Executors.newFixedThreadPool(StaticConfiguration.SLAVE_WORKERS);
+            this.es = Executors.newFixedThreadPool(SlaveConfiguration.WORKERS);
             this.cs = new ExecutorCompletionService<>(es);
 
             InputStream inputStream = this.socket.getInputStream();
@@ -47,7 +48,8 @@ public class Slave implements Runnable {
             this.receiveThread = new Thread(receiver);
             this.receiveThread.start();
         } catch (IOException e) {
-            err("The master is probably not reachable. " + e);
+            err("The master " + NetworkConfiguration.masterAddress.getHostAddress() + " is probably not reachable - " + e);
+            Main.reportMasterLost();
             this.running = false;
         }
     }
@@ -61,7 +63,7 @@ public class Slave implements Runnable {
             log("Sending hello message to master");
 
             // sending join message to the master incl. the number of workers
-            JoinPayload joinPayload = new JoinPayload(StaticConfiguration.SLAVE_WORKERS);
+            JoinPayload joinPayload = new JoinPayload(SlaveConfiguration.WORKERS);
             Message joinMessage = new Message(MessageType.SLAVE_JOIN, joinPayload);
             this.objectOutputStream.writeObject(joinMessage);
             this.objectOutputStream.flush();
@@ -134,7 +136,7 @@ public class Slave implements Runnable {
     }
 
     private synchronized void setCurrentSlice(SlicePayload majorSlice) {
-        this.currentMinorSlices = Utils.getNSlices(majorSlice.getStart(), majorSlice.getEnd(), StaticConfiguration.SLAVE_WORKERS);
+        this.currentMinorSlices = Utils.getNSlices(majorSlice.getStart(), majorSlice.getEnd(), SlaveConfiguration.WORKERS);
     }
 
     private void stopSlave(boolean force) {

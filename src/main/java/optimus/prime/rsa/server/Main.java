@@ -6,6 +6,7 @@ import optimus.prime.rsa.server.communication.Master;
 import optimus.prime.rsa.server.communication.Slave;
 import optimus.prime.rsa.server.config.MasterConfiguration;
 import optimus.prime.rsa.server.config.NetworkConfiguration;
+import optimus.prime.rsa.server.config.SlaveConfiguration;
 import optimus.prime.rsa.server.config.StaticConfiguration;
 
 import java.math.BigInteger;
@@ -110,7 +111,7 @@ public class Main {
         // port key
         StaticConfiguration.PORT = Integer.parseInt(ap.get("port"));
         // workers key
-        StaticConfiguration.SLAVE_WORKERS = Integer.parseInt(ap.get("workers"));
+        SlaveConfiguration.WORKERS = Integer.parseInt(ap.get("workers"));
         // pub-rsa-key key
         try {
             StaticConfiguration.PUB_RSA_KEY = new BigInteger(ap.get("pub-rsa-key"));
@@ -135,7 +136,7 @@ public class Main {
             // update masterAddress if master is lost
             if (LOST_MASTER) {
                 try {
-                    NetworkConfiguration.masterAddress = NetworkConfiguration.hosts.get(0);
+                    NetworkConfiguration.masterAddress = NetworkConfiguration.hosts.remove(0);
                 } catch (IndexOutOfBoundsException e) {
                     Utils.err("Main   - There are no known hosts left - " + e);
                     return;
@@ -163,6 +164,9 @@ public class Main {
                 System.out.println("Main   - Starting Master and Slave ...");
             }
 
+            // start or restart done
+            LOST_MASTER = false;
+
             // Start master if not slave
             Thread masterThread = null;
             if (MasterConfiguration.isMaster) {
@@ -172,16 +176,13 @@ public class Main {
             }
 
             Thread slaveThread = null;
-            if (StaticConfiguration.SLAVE_WORKERS != 0) {
+            if (SlaveConfiguration.WORKERS != 0) {
                 Slave slave = new Slave();
                 slaveThread = new Thread(slave);
                 slaveThread.start();
             } else {
                 System.out.println("Main   - Creating no slave because workers are set to 0");
             }
-
-            // start or restart done
-            LOST_MASTER = false;
 
             try {
                 if (slaveThread != null) {
