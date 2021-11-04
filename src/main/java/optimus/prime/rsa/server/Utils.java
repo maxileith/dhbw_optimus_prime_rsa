@@ -3,12 +3,14 @@ package optimus.prime.rsa.server;
 import optimus.prime.rsa.ConsoleColors;
 import optimus.prime.rsa.server.communication.payloads.SlicePayload;
 
+import java.awt.*;
 import java.io.*;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.*;
+import java.util.List;
 
 public class Utils {
 
@@ -90,6 +92,7 @@ public class Utils {
     // errors are printed in the default color when exporting as jar, e.g.
     // white in Windows Terminal
     public static void err(String s) {
+        Toolkit.getDefaultToolkit().beep();
         System.err.println(ConsoleColors.RED + s + ConsoleColors.RESET);
     }
 }
