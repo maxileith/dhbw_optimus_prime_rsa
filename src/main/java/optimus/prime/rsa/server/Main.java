@@ -13,13 +13,15 @@ import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.concurrent.TimeUnit;
 
 public class Main {
 
     private static boolean LOST_MASTER = false;
 
     public static void main(String[] args) {
+
+        // moves cursor to first row
+        System.out.print("\033[H\033[2J");
 
         ArgumentParser ap = new ArgumentParser();
         ap.addArgument(
