@@ -78,7 +78,7 @@ public class Master implements Runnable {
 
         if (this.solution != null) {
             RSAHelper helper = new RSAHelper();
-            log("Decrypted text is \"" + helper.decrypt(this.solution.getPrime1().toString(), this.solution.getPrime2().toString(), StaticConfiguration.CIPHER) + "\"");
+            log("Decrypted text is " + ConsoleColors.UNDERLINE + helper.decrypt(this.solution.getPrime1().toString(), this.solution.getPrime2().toString(), StaticConfiguration.CIPHER));
         } else {
             log("The solution cannot be found in the given prime numbers.");
         }
@@ -87,7 +87,7 @@ public class Master implements Runnable {
         long duration = endMillis - MasterConfiguration.startMillis;
 
         log("end millis: " + endMillis);
-        log("The whole process (including all masters) took " + TimeUnit.MILLISECONDS.toMinutes(duration) + "m" + TimeUnit.MILLISECONDS.toSeconds(duration) % 60 + "s" + duration % 1000 + "ms");
+        log("The whole process (including all masters) took " + ConsoleColors.UNDERLINE + TimeUnit.MILLISECONDS.toMinutes(duration) + "m" + TimeUnit.MILLISECONDS.toSeconds(duration) % 60 + "s" + duration % 1000 + "ms");
 
         log("Thread terminated");
     }
