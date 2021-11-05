@@ -203,7 +203,8 @@ public class Master implements Runnable {
         log("Sending the start millis: " + MasterConfiguration.startMillis);
 
         // start message
-        Message startMessage = new Message(MessageType.MASTER_DO_WORK, new SlicePayload(-1, -1));
+        // empty payload is the "start"
+        Message startMessage = new Message(MessageType.MASTER_START_MESSAGE);
         broadcaster.send(startMessage);
         log("Sending start message");
     }
@@ -285,6 +286,7 @@ public class Master implements Runnable {
             } catch (IOException e) {
                 if (this.running) {
                     err("Object Input stream closed " + e);
+                    e.printStackTrace();
                     // Slave died
                     abortSlice(this.currentSlice);
                 } else {
@@ -309,9 +311,10 @@ public class Master implements Runnable {
             log("Received message");
             return switch (m.getType()) {
                 case SLAVE_JOIN -> this.handleJoin(m);
-                case SLAVE_FINISHED_WORK -> this.handleSlaveFinishedWork();
+                case SLAVE_FINISHED_WORK -> this.handleWorkNeeded(false);
                 case SLAVE_SOLUTION_FOUND -> this.handleSolutionFound(m);
                 case SLAVE_EXIT_ACKNOWLEDGE -> this.handleExitAcknowledge();
+                case SLAVE_GET_FIRST_SLICE -> this.handleWorkNeeded(true);
                 default -> MultiMessage.NONE;
             };
         }
@@ -340,12 +343,14 @@ public class Master implements Runnable {
             return null;
         }
 
-        private MultiMessage handleSlaveFinishedWork() {
-            log("Slave finished Work");
+        private MultiMessage handleWorkNeeded(boolean firstWork) {
+            log("Slave needs new work");
             // except TaskPayload
             MultiMessage response = new MultiMessage();
 
-            markSliceAsDone(this.currentSlice);
+            if (!firstWork) {
+                markSliceAsDone(this.currentSlice);
+            }
 
             // create new slice for slave
             try {

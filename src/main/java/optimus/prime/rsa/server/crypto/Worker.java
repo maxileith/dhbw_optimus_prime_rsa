@@ -15,10 +15,10 @@ public class Worker implements Callable<SolutionPayload> {
 
     private final RSAHelper rsaHelper;
 
-    private final static String LOG_MESSAGE_NO_SOLUTION = ConsoleColors.BOLD + "Slave  - Worker - Found no solution in slice %s" + ConsoleColors.RESET;
-    private final static String LOG_MESSAGE_SOLUTION_FOUND = ConsoleColors.BOLD + "Slave  - Worker - Found solution in slice %s - Solution is a:%d b:%d" + ConsoleColors.RESET;
-    private final static String LOG_START_INSPECTING = ConsoleColors.BOLD + "Slave  - Worker - Start inspecting slice %s" + ConsoleColors.RESET;
-    private final static String LOG_INTERRUPTED = ConsoleColors.BOLD + "Slave  - Worker - Interrupted" + ConsoleColors.RESET;
+    private final static String LOG_MESSAGE_NO_SOLUTION = ConsoleColors.BOLD + "Slave         - Worker - Found no solution in slice %s" + ConsoleColors.RESET;
+    private final static String LOG_MESSAGE_SOLUTION_FOUND = ConsoleColors.BOLD + "Slave         - Worker - Found solution in slice %s - Solution is a:%d b:%d" + ConsoleColors.RESET;
+    private final static String LOG_START_INSPECTING = ConsoleColors.BOLD + "Slave         - Worker - Start inspecting slice %s" + ConsoleColors.RESET;
+    private final static String LOG_INTERRUPTED = ConsoleColors.BOLD + "Slave         - Worker - Interrupted" + ConsoleColors.RESET;
 
     public Worker(SlicePayload slice, List<BigInteger> primes, BigInteger pubRsaKey) {
         this.slice = slice;

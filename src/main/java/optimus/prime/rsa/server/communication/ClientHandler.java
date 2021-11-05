@@ -106,10 +106,10 @@ public class ClientHandler implements Runnable {
     }
 
     private static void log(String s) {
-        System.out.println(ConsoleColors.WHITE_UNDERLINED + "ClientHandler - " + s + ConsoleColors.RESET);
+        System.out.println(ConsoleColors.UNDERLINE + "ClientHandler - " + s + ConsoleColors.RESET);
     }
 
     private static void err(String s) {
-        Utils.err(ConsoleColors.WHITE_UNDERLINED + "ClientHandler - " + s + ConsoleColors.RESET);
+        Utils.err(ConsoleColors.UNDERLINE + "ClientHandler - " + s + ConsoleColors.RESET);
     }
 }

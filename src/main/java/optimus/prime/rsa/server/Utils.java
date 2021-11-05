@@ -12,13 +12,12 @@ import java.util.List;
 
 public class Utils {
 
-    public static Queue<SlicePayload> getNSlices(int start, int end, int n) {
+    public static Queue<SlicePayload> getNSlices(SlicePayload majorSlice, int n) {
+
+        int start = majorSlice.getStart();
+        int end = majorSlice.getEnd();
+
         Queue<SlicePayload> slices = new LinkedList<>();
-
-        if (start == -1 && end == -1) {
-            return slices;
-        }
-
         double stepSize = (end - start + 1) / (double) n;
 
         double desiredPosition = start;

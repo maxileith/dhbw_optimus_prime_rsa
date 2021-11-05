@@ -28,6 +28,7 @@ public class Slave implements Runnable {
     private Queue<SlicePayload> currentMinorSlices;
 
     private boolean running = true;
+    private boolean missionStarted = false;
 
     public Slave() {
 
@@ -74,12 +75,20 @@ public class Slave implements Runnable {
             this.objectOutputStream.writeObject(joinMessage);
             this.objectOutputStream.flush();
 
+            outerLoop:
             while (this.running) {
 
                 // wait for the slice queue to get filled
                 while ((this.currentMinorSlices == null || this.currentMinorSlices.isEmpty()) && !this.socket.isClosed()) {
                     // noinspection BusyWait
                     Thread.sleep(5);
+                    if (missionStarted) {
+                        Message m = new Message(MessageType.SLAVE_GET_FIRST_SLICE);
+                        this.objectOutputStream.writeObject(m);
+                        this.objectOutputStream.flush();
+                        missionStarted = false;
+                        continue outerLoop;
+                    }
                 }
 
                 // do the math
@@ -142,7 +151,7 @@ public class Slave implements Runnable {
     }
 
     private synchronized void setCurrentSlice(SlicePayload majorSlice) {
-        this.currentMinorSlices = Utils.getNSlices(majorSlice.getStart(), majorSlice.getEnd(), SlaveConfiguration.WORKERS);
+        this.currentMinorSlices = Utils.getNSlices(majorSlice, SlaveConfiguration.WORKERS);
     }
 
     private void stopSlave(boolean force) {
@@ -231,6 +240,7 @@ public class Slave implements Runnable {
                     case MASTER_LOST_SLICES -> this.handleProgressUpdate(m);
                     case MASTER_CIPHER -> this.handleCipher(m);
                     case MASTER_START_MILLIS -> this.handleStartMillis(m);
+                    case MASTER_START_MESSAGE -> this.handleStartMessage();
                     default -> log("Unexpected message type");
                 }
             }
@@ -304,6 +314,11 @@ public class Slave implements Runnable {
             } else {
                 log("skip updating start millis because master is the same host");
             }
+        }
+
+        private void handleStartMessage() {
+            log("starting the mission");
+            missionStarted = true;
         }
 
         private static void log(String s) {
