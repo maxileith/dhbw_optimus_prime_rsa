@@ -1,11 +1,9 @@
 package optimus.prime.rsa.server;
 
 import optimus.prime.rsa.ConsoleColors;
-import optimus.prime.rsa.server.communication.payloads.SlicePayload;
+import optimus.prime.rsa.payloads.SlicePayload;
 
 import java.awt.*;
-import java.io.*;
-import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -16,6 +14,11 @@ public class Utils {
 
     public static Queue<SlicePayload> getNSlices(int start, int end, int n) {
         Queue<SlicePayload> slices = new LinkedList<>();
+
+        if (start == -1 && end == -1) {
+            return slices;
+        }
+
         double stepSize = (end - start + 1) / (double) n;
 
         double desiredPosition = start;
@@ -42,36 +45,6 @@ public class Utils {
         } while (currentEnd != end);
 
         return slices;
-    }
-
-    public static List<BigInteger> getPrimes(String primeList) {
-        Set<BigInteger> primes = new HashSet<>();
-
-        final String fileName = "primes" + primeList + ".txt";
-        InputStream stream = Main.class.getClassLoader().getResourceAsStream(fileName);
-
-        if (stream == null) {
-            File f = new File(primeList);
-            try {
-                stream = new FileInputStream(f);
-            } catch (FileNotFoundException e) {
-                Utils.err("Couldn't load primes - " + e);
-                System.exit(1);
-            }
-        }
-
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(stream))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                BigInteger value = new BigInteger(line);
-                primes.add(value);
-            }
-        } catch (IOException e) {
-            Utils.err("Couldn't load primes - " + e);
-            System.exit(1);
-        }
-
-        return primes.stream().toList();
     }
 
     public static List<InetAddress> getOwnIPs() throws SocketException {

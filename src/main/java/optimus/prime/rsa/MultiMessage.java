@@ -1,11 +1,11 @@
-package optimus.prime.rsa.server.communication;
+package optimus.prime.rsa;
 
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-class MultiMessage implements Serializable {
+public class MultiMessage implements Serializable {
 
     private final List<Message> messages;
 

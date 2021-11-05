@@ -1,6 +1,7 @@
 package optimus.prime.rsa.server.communication;
 
 import java.io.*;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -11,8 +12,11 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 import optimus.prime.rsa.ConsoleColors;
+import optimus.prime.rsa.Message;
+import optimus.prime.rsa.MessageType;
+import optimus.prime.rsa.MultiMessage;
 import optimus.prime.rsa.server.Utils;
-import optimus.prime.rsa.server.communication.payloads.*;
+import optimus.prime.rsa.payloads.*;
 import optimus.prime.rsa.server.config.MasterConfiguration;
 import optimus.prime.rsa.server.config.NetworkConfiguration;
 import optimus.prime.rsa.server.config.StaticConfiguration;
@@ -29,7 +33,9 @@ public class Master implements Runnable {
 
     private SolutionPayload solution = null;
 
-    public Master(String primeList) {
+    private boolean alreadyStarted = false;
+
+    public Master() {
         this.broadcaster = new Broadcaster();
         this.broadcasterThread = new Thread(this.broadcaster);
 
@@ -37,12 +43,10 @@ public class Master implements Runnable {
         // master configuration. this is important, since on a host
         // that was a slave before, the primes that were received
         // by the slave have to be used in the future.
-        if (StaticConfiguration.primes == null) {
-            StaticConfiguration.primes = Utils.getPrimes(primeList);
-        }
-        log("cipher: " + StaticConfiguration.CIPHER);
-        log("public key: " + StaticConfiguration.PUB_RSA_KEY);
-        log("doing " + MasterConfiguration.MASTER_CHECKS_PER_SLICE_PER_WORKER + " checks per slice per worker");
+
+        //if (StaticConfiguration.primes == null) {
+        //    StaticConfiguration.primes = Utils.getPrimes(primeList);
+        //}
 
         // reset connected hosts
         NetworkConfiguration.hosts = new ArrayList<>();
@@ -63,7 +67,6 @@ public class Master implements Runnable {
 
     @Override
     public void run() {
-        MasterConfiguration.startMillis = System.currentTimeMillis();
         log("start millis: " + MasterConfiguration.startMillis);
 
         log("starting broadcaster ...");
@@ -95,7 +98,7 @@ public class Master implements Runnable {
     }
 
     private void distributeConnections() throws IOException {
-        while (!this.serverSocket.isClosed() && this.solution == null && (MasterConfiguration.currentSliceStart != StaticConfiguration.primes.size() || !this.slicesInProgress.isEmpty() || !MasterConfiguration.lostSlices.isEmpty())) {
+        while (!alreadyStarted || (!this.serverSocket.isClosed() && this.solution == null && (MasterConfiguration.currentSliceStart != StaticConfiguration.primes.size() || !this.slicesInProgress.isEmpty() || !MasterConfiguration.lostSlices.isEmpty()))) {
             try {
                 Socket slave = this.serverSocket.accept();
                 log("Connection from " + slave + " established.");
@@ -107,6 +110,11 @@ public class Master implements Runnable {
                 thread.start();
                 this.connectionHandlerThreads.add(thread);
             } catch (SocketTimeoutException ignored) {
+            }
+            if (!this.alreadyStarted && !StaticConfiguration.PUB_RSA_KEY.equals(BigInteger.ZERO) && !StaticConfiguration.CIPHER.equals("") && StaticConfiguration.primes != null) {
+                this.alreadyStarted = true;
+                log("Broadcasting mission details.");
+                broadcastMissionDetails();
             }
         }
         log("Stopping ConnectionHandlers");
@@ -165,7 +173,43 @@ public class Master implements Runnable {
         return lostSlices;
     }
 
-    private void stop() {
+    private void broadcastMissionDetails() {
+        if (MasterConfiguration.startMillis == 0) {
+            MasterConfiguration.startMillis = System.currentTimeMillis();
+        }
+
+        // create payload of primes
+        PrimesPayload primesPayload = new PrimesPayload(StaticConfiguration.primes);
+        Message primesMessage = new Message(MessageType.MASTER_SEND_PRIMES, primesPayload);
+        broadcaster.send(primesMessage);
+        log("Sending primes to Slave");
+
+        // create payload for the public key
+        PubKeyRsaPayload pubKeyRsaPayload = new PubKeyRsaPayload(StaticConfiguration.PUB_RSA_KEY);
+        Message pubKeyRsaMessage = new Message(MessageType.MASTER_SEND_PUB_KEY_RSA, pubKeyRsaPayload);
+        broadcaster.send(pubKeyRsaMessage);
+        log("Sending the public key: \"" + StaticConfiguration.PUB_RSA_KEY + "\"");
+
+        // create payload for the cipher
+        CipherPayload cipherPayload = new CipherPayload(StaticConfiguration.CIPHER);
+        Message cipherMessage = new Message(MessageType.MASTER_CIPHER, cipherPayload);
+        broadcaster.send(cipherMessage);
+        log("Sending the cipher: \"" + StaticConfiguration.CIPHER + "\"");
+
+        // create payload for the start time
+        StartMillisPayload startMillisPayload = new StartMillisPayload(MasterConfiguration.startMillis);
+        Message startMillisMessage = new Message(MessageType.MASTER_START_MILLIS, startMillisPayload);
+        broadcaster.send(startMillisMessage);
+        log("Sending the start millis: " + MasterConfiguration.startMillis);
+
+        // start message
+        Message startMessage = new Message(MessageType.MASTER_DO_WORK, new SlicePayload(0, -1));
+        broadcaster.send(startMessage);
+        log("Sending start message");
+    }
+
+
+    private synchronized void stop() {
         log("waiting for ConnectionHandlers to terminate ...");
         this.connectionHandlerThreads.forEach(t -> {
             try {
@@ -192,11 +236,11 @@ public class Master implements Runnable {
     }
 
     private static void log(String s) {
-        System.out.println(ConsoleColors.BLUE_BRIGHT + "Master - " + s + ConsoleColors.RESET);
+        System.out.println(ConsoleColors.BLUE_BRIGHT + "Master        - " + s + ConsoleColors.RESET);
     }
 
     private static void err(String s) {
-        Utils.err("Master - " + s);
+        Utils.err("Master        - " + s);
     }
 
     private class ConnectionHandler implements Runnable {
@@ -223,13 +267,16 @@ public class Master implements Runnable {
                     InputStream inputStream = this.slave.getInputStream();
                     ObjectInputStream objectInputStream = new ObjectInputStream(inputStream)
             ) {
-                // add to output streams for broadcasting
-                broadcaster.addOutputStream(this.slave.getInetAddress(), objectOutputStream);
                 // main loop to receive messages
                 while (this.running) {
                     log("waiting for message to be received ...");
                     Message message = (Message) objectInputStream.readObject();
                     final MultiMessage response = this.handleMessage(message);
+
+                    if (message.getType() == MessageType.SLAVE_JOIN) {
+                        // add to output streams for broadcasting
+                        broadcaster.addOutputStream(this.slave.getInetAddress(), objectOutputStream);
+                    }
 
                     if (response != null) {
                         objectOutputStream.writeSyncedObjectFlush(response);
@@ -275,8 +322,6 @@ public class Master implements Runnable {
 
             log("Slave wants to join with " + this.workers + " workers");
 
-            MultiMessage response = new MultiMessage();
-
             InetAddress slaveAddress = this.slave.getInetAddress();
             // if slave is not on the same host provide information
             // that is needed in case the master goes down
@@ -284,50 +329,15 @@ public class Master implements Runnable {
                 // Add slave IP-Address to network Information
                 NetworkConfiguration.hosts.add(slaveAddress);
 
-                // create payload of primes
-                PrimesPayload primesPayload = new PrimesPayload(StaticConfiguration.primes);
-                Message primesMessage = new Message(MessageType.MASTER_SEND_PRIMES, primesPayload);
-                response.addMessage(primesMessage);
-                log("Sending primes to Slave");
-
-                // create payload for the public key
-                PubKeyRsaPayload pubKeyRsaPayload = new PubKeyRsaPayload(StaticConfiguration.PUB_RSA_KEY);
-                Message pubKeyRsaMessage = new Message(MessageType.MASTER_SEND_PUB_KEY_RSA, pubKeyRsaPayload);
-                response.addMessage(pubKeyRsaMessage);
-                log("Sending the public key: \"" + StaticConfiguration.PUB_RSA_KEY + "\"");
-
-                // create payload for the cipher
-                CipherPayload cipherPayload = new CipherPayload(StaticConfiguration.CIPHER);
-                Message cipherMessage = new Message(MessageType.MASTER_CIPHER, cipherPayload);
-                response.addMessage(cipherMessage);
-                log("Sending the cipher: \"" + StaticConfiguration.CIPHER + "\"");
-
-                // create payload for the start time
-                StartMillisPayload startMillisPayload = new StartMillisPayload(MasterConfiguration.startMillis);
-                Message startMillisMessage = new Message(MessageType.MASTER_START_MILLIS, startMillisPayload);
-                response.addMessage(startMillisMessage);
-                log("Sending the start millis: " + MasterConfiguration.startMillis);
-
                 // send new hosts list to all slaves
                 HostsPayload hostsPayload = new HostsPayload(NetworkConfiguration.hosts);
                 Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
                 this.broadcaster.send(hostsMessage);
             } else {
-                log("Skip sending of primes, public key, cipher and host list, because the slave is hosted on the same host as the master");
+                log("Skip sending updating the hosts list because slave is hosted on the same system as the master");
             }
 
-            // create payload for next tasks
-            this.currentSlice = getNextSlice(this.workers);
-            Message sliceMessage = new Message(MessageType.MASTER_DO_WORK, this.currentSlice);
-            response.addMessage(sliceMessage);
-            log("Sending new work to Slave: " + this.currentSlice);
-
-            // send progress to all slaves
-            ProgressPayload progressPayload = new ProgressPayload(getLostSlices(), MasterConfiguration.currentSliceStart);
-            Message progressMessage = new Message(MessageType.MASTER_LOST_SLICES, progressPayload);
-            this.broadcaster.send(progressMessage);
-
-            return response;
+            return null;
         }
 
         private MultiMessage handleSlaveFinishedWork() {
@@ -385,11 +395,11 @@ public class Master implements Runnable {
         }
 
         private void log(String s) {
-            System.out.println(ConsoleColors.GREEN_BRIGHT + "Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - " + s + ConsoleColors.RESET);
+            System.out.println(ConsoleColors.GREEN_BRIGHT + "Master        - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - " + s + ConsoleColors.RESET);
         }
 
         private void err(String s) {
-            Utils.err("Master - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - " + s);
+            Utils.err("Master        - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - " + s);
         }
     }
 
@@ -444,10 +454,10 @@ public class Master implements Runnable {
         }
 
         private static void log(String s) {
-            System.out.println(ConsoleColors.YELLOW_BRIGHT + "Master - Broadcaster - " +  s + ConsoleColors.RESET);
+            System.out.println(ConsoleColors.YELLOW_BRIGHT + "Master        - Broadcaster - " + s + ConsoleColors.RESET);
         }
 
-        public void stop() {
+        public synchronized void stop() {
             this.running = false;
         }
     }

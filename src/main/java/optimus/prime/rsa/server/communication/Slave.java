@@ -1,6 +1,9 @@
 package optimus.prime.rsa.server.communication;
 
-import optimus.prime.rsa.server.communication.payloads.*;
+import optimus.prime.rsa.Message;
+import optimus.prime.rsa.MessageType;
+import optimus.prime.rsa.MultiMessage;
+import optimus.prime.rsa.payloads.*;
 import optimus.prime.rsa.server.config.MasterConfiguration;
 import optimus.prime.rsa.server.config.SlaveConfiguration;
 import optimus.prime.rsa.server.crypto.Worker;
@@ -46,7 +49,6 @@ public class Slave implements Runnable {
 
             Receiver receiver = new Receiver(objectInputStream);
             this.receiveThread = new Thread(receiver);
-            this.receiveThread.start();
         } catch (IOException e) {
             err("The master " + NetworkConfiguration.masterAddress.getHostAddress() + " is probably not reachable - " + e);
             Main.reportMasterLost();
@@ -59,6 +61,10 @@ public class Slave implements Runnable {
         if (!this.running) {
             return;
         }
+
+        log("starting receiver ...");
+        this.receiveThread.start();
+
         try {
             log("Sending hello message to master");
 
@@ -176,11 +182,11 @@ public class Slave implements Runnable {
     }
 
     private static void log(String s) {
-        System.out.println(ConsoleColors.MAGENTA_BRIGHT + "Slave  - " + s + ConsoleColors.RESET);
+        System.out.println(ConsoleColors.MAGENTA_BRIGHT + "Slave         - " + s + ConsoleColors.RESET);
     }
 
     private static void err(String s) {
-        Utils.err("Slave  - " + s);
+        Utils.err("Slave         - " + s);
     }
 
     private class Receiver implements Runnable {
@@ -225,7 +231,7 @@ public class Slave implements Runnable {
                     case MASTER_LOST_SLICES -> this.handleProgressUpdate(m);
                     case MASTER_CIPHER -> this.handleCipher(m);
                     case MASTER_START_MILLIS -> this.handleStartMillis(m);
-                    default -> log("Unknown message type");
+                    default -> log("Unexpected message type");
                 }
             }
         }
@@ -251,43 +257,61 @@ public class Slave implements Runnable {
 
         private void handleMasterSendPrimes(Message m) {
             PrimesPayload primesPayload = (PrimesPayload) m.getPayload();
-            StaticConfiguration.primes = primesPayload.getPrimes();
-            log("set primes - length: " + StaticConfiguration.primes.size());
+            if (!MasterConfiguration.isMaster) {
+                StaticConfiguration.primes = primesPayload.getPrimes();
+                log("set primes - length: " + StaticConfiguration.primes.size());
+            } else {
+                log("skip updating primes because master is the same host");
+            }
         }
 
         private void handleMasterSendPubKeyRsa(Message m) {
             PubKeyRsaPayload pubKeyRsaPayload = (PubKeyRsaPayload) m.getPayload();
-            StaticConfiguration.PUB_RSA_KEY = pubKeyRsaPayload.getPubKeyRsa();
-            log("set public key to \"" + pubKeyRsaPayload.getPubKeyRsa() + "\"");
+            if (!MasterConfiguration.isMaster) {
+                log("set public key to \"" + pubKeyRsaPayload.getPubKeyRsa() + "\"");
+                StaticConfiguration.PUB_RSA_KEY = pubKeyRsaPayload.getPubKeyRsa();
+            } else {
+                log("skip updating public key because master is the same host");
+            }
         }
 
         private void handleProgressUpdate(Message m) {
             ProgressPayload progressPayload = (ProgressPayload) m.getPayload();
-            log("received update of progress");
             if (!MasterConfiguration.isMaster) {
+                log("received update of progress");
                 MasterConfiguration.lostSlices = progressPayload.getLostSlices();
                 MasterConfiguration.currentSliceStart = progressPayload.getCurrentSliceStart();
+            } else {
+                log("skip updating progress because master is the same host");
             }
         }
 
         private void handleCipher(Message m) {
             CipherPayload cipherPayload = (CipherPayload) m.getPayload();
-            log("received cipher: \"" + cipherPayload.getCipher() + "\"");
-            StaticConfiguration.CIPHER = cipherPayload.getCipher();
+            if (!MasterConfiguration.isMaster) {
+                log("received cipher: \"" + cipherPayload.getCipher() + "\"");
+                StaticConfiguration.CIPHER = cipherPayload.getCipher();
+            } else {
+                log("skip updating cipher because master is the same host");
+            }
         }
 
         private void handleStartMillis(Message m) {
             StartMillisPayload startMillisPayload = (StartMillisPayload) m.getPayload();
-            log("received start millis: " + startMillisPayload.getStartMillis());
-            MasterConfiguration.startMillis = startMillisPayload.getStartMillis();
+            if (!MasterConfiguration.isMaster) {
+                log("received start millis: " + startMillisPayload.getStartMillis());
+                MasterConfiguration.startMillis = startMillisPayload.getStartMillis();
+            } else {
+                log("skip updating start millis because master is the same host");
+            }
         }
 
         private static void log(String s) {
-            System.out.println(ConsoleColors.CYAN_BRIGHT + "Slave  - Receiver - " + s + ConsoleColors.RESET);
+            System.out.println(ConsoleColors.CYAN_BRIGHT + "Slave         - Receiver - " + s + ConsoleColors.RESET);
         }
 
         private static void err(String s) {
-            Utils.err("Slave  - Receiver - " + s);
+            Utils.err("Slave         - Receiver - " + s);
         }
     }
 }

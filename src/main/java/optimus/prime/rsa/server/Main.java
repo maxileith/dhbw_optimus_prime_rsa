@@ -2,6 +2,7 @@ package optimus.prime.rsa.server;
 
 import optimus.prime.rsa.argumentparser.ArgumentParser;
 import optimus.prime.rsa.argumentparser.ArgumentBlueprint;
+import optimus.prime.rsa.server.communication.ClientHandler;
 import optimus.prime.rsa.server.communication.Master;
 import optimus.prime.rsa.server.communication.Slave;
 import optimus.prime.rsa.server.config.MasterConfiguration;
@@ -42,10 +43,18 @@ public class Main {
         );
         ap.addArgument(
                 new ArgumentBlueprint(
-                        "port",
+                        "intra-port",
                         false,
                         "defines the TCP port to use for communication",
                         "2504"
+                )
+        );
+        ap.addArgument(
+                new ArgumentBlueprint(
+                        "client-port",
+                        false,
+                        "defines the TCP port to use for communication with the client",
+                        "2505"
                 )
         );
         ap.addArgument(
@@ -58,34 +67,10 @@ public class Main {
         );
         ap.addArgument(
                 new ArgumentBlueprint(
-                        "pub-rsa-key",
-                        true,
-                        "master-only: defines the public-key to crack",
-                        ""
-                )
-        );
-        ap.addArgument(
-                new ArgumentBlueprint(
-                        "cipher",
-                        true,
-                        "master-only: defines encrypted payload to decrypt",
-                        ""
-                )
-        );
-        ap.addArgument(
-                new ArgumentBlueprint(
                         "max-slaves",
                         false,
                         "master-only: defines how many slaves can connect to the master",
                         "1000"
-                )
-        );
-        ap.addArgument(
-                new ArgumentBlueprint(
-                        "primes",
-                        true,
-                        "master-only: defines the prime list to use",
-                        "100"
                 )
         );
 
@@ -111,30 +96,39 @@ public class Main {
         }
         NetworkConfiguration.masterAddress = masterAddress;
 
-        // port key
-        StaticConfiguration.PORT = Integer.parseInt(ap.get("port"));
+        // intra-port key
+        StaticConfiguration.PORT = Integer.parseInt(ap.get("intra-port"));
+        // client-port key
+        StaticConfiguration.CLIENT_PORT = Integer.parseInt(ap.get("client-port"));
         // workers key
         SlaveConfiguration.WORKERS = Integer.parseInt(ap.get("workers"));
-        // pub-rsa-key key
-        try {
-            StaticConfiguration.PUB_RSA_KEY = new BigInteger(ap.get("pub-rsa-key"));
-        } catch (NumberFormatException ignored) {
-            StaticConfiguration.PUB_RSA_KEY = BigInteger.ZERO;
-        }
-        // cipher key
-        StaticConfiguration.CIPHER = ap.get("cipher");
         // master-slice-size key
         MasterConfiguration.MASTER_CHECKS_PER_SLICE_PER_WORKER = Long.parseLong(ap.get("master-checks-per-slice-per-worker"));
         // max-slaves key
         MasterConfiguration.MAX_INCOMING_SLAVES = Integer.parseInt(ap.get("max-slaves"));
 
-        loop(ap.get("primes"));
+        ClientHandler clientHandler = new ClientHandler();
+        Thread clientHandlerThread = new Thread(clientHandler);
+        System.out.println("Main   - starting client handler ...");
+        clientHandlerThread.start();
+
+        loop();
+
+        System.out.println("Main   - stopping client handler ...");
+        clientHandler.stop();
+        System.out.println("Main   - waiting for the client handler to terminate ...");
+        try {
+            clientHandlerThread.join();
+        } catch (InterruptedException e) {
+            System.out.println("Main   - error while waiting for the client handler to terminate - " + e);
+        }
+
 
         System.out.println("Main   - Bye :)");
     }
 
-    private static void loop(String primeList) {
-        do {
+    private static void loop() {
+        while (true) {
 
             // update masterAddress if master is lost
             if (LOST_MASTER) {
@@ -173,7 +167,7 @@ public class Main {
             // Start master if not slave
             Thread masterThread = null;
             if (MasterConfiguration.isMaster) {
-                Master master = new Master(primeList);
+                Master master = new Master();
                 masterThread = new Thread(master);
                 masterThread.start();
             }
@@ -198,7 +192,7 @@ public class Main {
                 Utils.err("Main   - failed to join threads - " + e);
                 return;
             }
-        } while (LOST_MASTER);
+        }
     }
 
     public synchronized static void reportMasterLost() {

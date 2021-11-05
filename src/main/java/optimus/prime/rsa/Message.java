@@ -1,8 +1,8 @@
-package optimus.prime.rsa.server.communication;
+package optimus.prime.rsa;
 
 import java.io.Serializable;
 
-class Message implements Serializable {
+public class Message implements Serializable {
 
     private final MessageType type;
     private final Object payload;

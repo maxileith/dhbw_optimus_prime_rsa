@@ -1,4 +1,4 @@
-package optimus.prime.rsa.server.communication.payloads;
+package optimus.prime.rsa.payloads;
 
 import java.io.Serializable;
 import java.util.Queue;

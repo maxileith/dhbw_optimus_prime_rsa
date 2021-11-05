@@ -5,8 +5,9 @@ import java.util.List;
 
 public class StaticConfiguration {
     public static int PORT;
+    public static int CLIENT_PORT;
     public static final int MASTER_RESTART_TIMEOUT = 5000;
     public static List<BigInteger> primes = null;
-    public static BigInteger PUB_RSA_KEY;
-    public static String CIPHER;
+    public static BigInteger PUB_RSA_KEY = BigInteger.ZERO;
+    public static String CIPHER = "";
 }

@@ -19,17 +19,30 @@ test {
     useJUnitPlatform()
 }
 
-jar {
+task serverJar(type: Jar) {
     manifest {
         attributes(
                 'Main-Class': 'optimus.prime.rsa.server.Main',
         )
     }
+    classifier = 'server'
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    } {
+        exclude "META-INF/*.SF"
+        exclude "META-INF/*.DSA"
+        exclude "META-INF/*.RSA"
+    }
+    with jar
 }
 
-task fatJar(type: Jar) {
-    manifest.from jar.manifest
-    classifier = 'all'
+task clientJar(type: Jar) {
+    manifest {
+        attributes(
+                'Main-Class': 'optimus.prime.rsa.client.Main',
+        )
+    }
+    classifier = 'client'
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     } {
