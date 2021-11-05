@@ -203,7 +203,7 @@ public class Master implements Runnable {
         log("Sending the start millis: " + MasterConfiguration.startMillis);
 
         // start message
-        Message startMessage = new Message(MessageType.MASTER_DO_WORK, new SlicePayload(0, -1));
+        Message startMessage = new Message(MessageType.MASTER_DO_WORK, new SlicePayload(-1, -1));
         broadcaster.send(startMessage);
         log("Sending start message");
     }
