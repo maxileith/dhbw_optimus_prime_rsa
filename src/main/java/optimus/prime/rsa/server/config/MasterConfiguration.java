@@ -1,6 +1,7 @@
 package optimus.prime.rsa.server.config;
 
 import optimus.prime.rsa.payloads.SlicePayload;
+import optimus.prime.rsa.payloads.SolutionPayload;
 
 import java.util.LinkedList;
 import java.util.Queue;
@@ -12,4 +13,5 @@ public class MasterConfiguration {
     public static Queue<SlicePayload> lostSlices = new LinkedList<>();
     public static boolean isMaster = false;
     public static long startMillis = 0;
+    public static SolutionPayload solution = null;
 }

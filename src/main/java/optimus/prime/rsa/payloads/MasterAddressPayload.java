@@ -2,7 +2,6 @@ package optimus.prime.rsa.payloads;
 
 import java.io.Serializable;
 import java.net.InetAddress;
-import java.util.List;
 
 @SuppressWarnings("ClassCanBeRecord")
 public class MasterAddressPayload implements Serializable {

@@ -49,7 +49,7 @@ public class RSAHelper {
         ownGenerator.init(new RSAKeyGenerationParameters(
                 RSAStatics.e,
                 new SecureRandom(),
-                RSAStatics.KEYSIZE,
+                RSAStatics.KEY_SIZE,
                 RSAStatics.CERTAINTY)
         );
 
@@ -101,7 +101,7 @@ public class RSAHelper {
         generator.init(new RSAKeyGenerationParameters(
                 RSAStatics.e,
                 new SecureRandom(),
-                RSAStatics.KEYSIZE,
+                RSAStatics.KEY_SIZE,
                 RSAStatics.CERTAINTY)
         );
 

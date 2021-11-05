@@ -23,7 +23,7 @@ public class KeyGenerator {
         ownGenerator.init(new RSAKeyGenerationParameters(
                 RSAStatics.e,
                 new SecureRandom(),
-                RSAStatics.KEYSIZE,
+                RSAStatics.KEY_SIZE,
                 RSAStatics.CERTAINTY));
 
         String path = "src/main/resources/primes10000.txt";

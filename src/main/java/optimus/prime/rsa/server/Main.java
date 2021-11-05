@@ -14,6 +14,7 @@ import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.LinkedList;
 
 public class Main {
 
@@ -82,7 +83,7 @@ public class Main {
             System.out.println("Main   - own ips: ");
             NetworkConfiguration.ownAddresses.forEach(e -> System.out.println(e.getHostAddress()));
         } catch (SocketException e) {
-            Utils.err("Main   - unable to load own ips - " + e);
+            Utils.err("Main          - unable to load own ips - " + e);
             System.exit(1);
         }
 
@@ -91,7 +92,7 @@ public class Main {
         try {
             masterAddress = InetAddress.getByName(ap.get("master-address"));
         } catch (UnknownHostException ignored) {
-            Utils.err("Main   - " + ap.get("master-address") + " is not a valid hostname / ip-address");
+            Utils.err("Main          - " + ap.get("master-address") + " is not a valid hostname / ip-address");
             System.exit(0);
         }
         NetworkConfiguration.masterAddress = masterAddress;
@@ -107,28 +108,42 @@ public class Main {
         // max-slaves key
         MasterConfiguration.MAX_INCOMING_SLAVES = Integer.parseInt(ap.get("max-slaves"));
 
-        ClientHandler clientHandler = new ClientHandler();
-        Thread clientHandlerThread = new Thread(clientHandler);
-        System.out.println("Main   - starting client handler ...");
-        clientHandlerThread.start();
+        // noinspection InfiniteLoopStatement
+        while (true) {
+            ClientHandler clientHandler = new ClientHandler();
+            Thread clientHandlerThread = new Thread(clientHandler);
+            System.out.println("Main          - starting client handler ...");
+            clientHandlerThread.start();
 
-        loop();
+            loop();
 
-        System.out.println("Main   - stopping client handler ...");
-        clientHandler.stop();
-        System.out.println("Main   - waiting for the client handler to terminate ...");
-        try {
-            clientHandlerThread.join();
-        } catch (InterruptedException e) {
-            System.out.println("Main   - error while waiting for the client handler to terminate - " + e);
+            clientHandler.sendSolution();
+
+            System.out.println("Main          - stopping client handler ...");
+            clientHandler.stop();
+            System.out.println("Main          - waiting for the client handler to terminate ...");
+            try {
+                clientHandlerThread.join();
+            } catch (InterruptedException e) {
+                System.out.println("Main          - error while waiting for the client handler to terminate - " + e);
+            }
+
+
+            MasterConfiguration.solution = null;
+            MasterConfiguration.startMillis = 0;
+            MasterConfiguration.lostSlices = new LinkedList<>();
+            MasterConfiguration.currentSliceStart = 0;
+
+            StaticConfiguration.PUB_RSA_KEY = BigInteger.ZERO;
+            StaticConfiguration.primes = null;
+            StaticConfiguration.CIPHER = "";
         }
 
-
-        System.out.println("Main   - Bye :)");
+        // System.out.println("Main          - Bye :)");
     }
 
     private static void loop() {
-        while (true) {
+        do {
 
             // update masterAddress if master is lost
             if (LOST_MASTER) {
@@ -153,12 +168,12 @@ public class Main {
                     }
                     System.out.println();
                 } catch (InterruptedException e) {
-                    Utils.err("Main   - error while waiting for the MASTER_RESTART_TIMEOUT to expire - " + e);
+                    Utils.err("Main          - error while waiting for the MASTER_RESTART_TIMEOUT to expire - " + e);
                 }
-                System.out.println("Main   - Starting Slave again ...");
+                System.out.println("Main          - Starting Slave again ...");
             } else if (LOST_MASTER) {
-                System.out.println("Main   - This host is the new master.");
-                System.out.println("Main   - Starting Master and Slave ...");
+                System.out.println("Main          - This host is the new master.");
+                System.out.println("Main          - Starting Master and Slave ...");
             }
 
             // start or restart done
@@ -178,7 +193,7 @@ public class Main {
                 slaveThread = new Thread(slave);
                 slaveThread.start();
             } else {
-                System.out.println("Main   - Creating no slave because workers are set to 0");
+                System.out.println("Main          - Creating no slave because workers are set to 0");
             }
 
             try {
@@ -189,10 +204,10 @@ public class Main {
                     masterThread.join();
                 }
             } catch (InterruptedException e) {
-                Utils.err("Main   - failed to join threads - " + e);
+                Utils.err("Main          - failed to join threads - " + e);
                 return;
             }
-        }
+        } while (LOST_MASTER);
     }
 
     public synchronized static void reportMasterLost() {

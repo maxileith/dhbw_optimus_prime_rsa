@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.List;
 
+@SuppressWarnings("ClassCanBeRecord")
 public class MissionPayload implements Serializable {
     private final String cipher;
     private final List<BigInteger> primes;

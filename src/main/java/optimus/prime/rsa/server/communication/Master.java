@@ -31,22 +31,11 @@ public class Master implements Runnable {
 
     private final List<SlicePayload> slicesInProgress = new LinkedList<>();
 
-    private SolutionPayload solution = null;
-
     private boolean alreadyStarted = false;
 
     public Master() {
         this.broadcaster = new Broadcaster();
         this.broadcasterThread = new Thread(this.broadcaster);
-
-        // only load primes if there are not already primes in the
-        // master configuration. this is important, since on a host
-        // that was a slave before, the primes that were received
-        // by the slave have to be used in the future.
-
-        //if (StaticConfiguration.primes == null) {
-        //    StaticConfiguration.primes = Utils.getPrimes(primeList);
-        //}
 
         // reset connected hosts
         NetworkConfiguration.hosts = new ArrayList<>();
@@ -67,8 +56,6 @@ public class Master implements Runnable {
 
     @Override
     public void run() {
-        log("start millis: " + MasterConfiguration.startMillis);
-
         log("starting broadcaster ...");
         this.broadcasterThread.start();
 
@@ -81,9 +68,9 @@ public class Master implements Runnable {
         }
         this.stop();
 
-        if (this.solution != null) {
+        if (MasterConfiguration.solution != null) {
             RSAHelper helper = new RSAHelper();
-            log("Decrypted text is " + ConsoleColors.UNDERLINE + helper.decrypt(this.solution.getPrime1().toString(), this.solution.getPrime2().toString(), StaticConfiguration.CIPHER));
+            log("Decrypted text is " + ConsoleColors.UNDERLINE + helper.decrypt(MasterConfiguration.solution.getPrime1().toString(), MasterConfiguration.solution.getPrime2().toString(), StaticConfiguration.CIPHER));
         } else {
             log("The solution cannot be found in the given prime numbers.");
         }
@@ -98,7 +85,7 @@ public class Master implements Runnable {
     }
 
     private void distributeConnections() throws IOException {
-        while (!alreadyStarted || (!this.serverSocket.isClosed() && this.solution == null && (MasterConfiguration.currentSliceStart != StaticConfiguration.primes.size() || !this.slicesInProgress.isEmpty() || !MasterConfiguration.lostSlices.isEmpty()))) {
+        while (!alreadyStarted || (!this.serverSocket.isClosed() && MasterConfiguration.solution == null && (MasterConfiguration.currentSliceStart != StaticConfiguration.primes.size() || !this.slicesInProgress.isEmpty() || !MasterConfiguration.lostSlices.isEmpty()))) {
             try {
                 Socket slave = this.serverSocket.accept();
                 log("Connection from " + slave + " established.");
@@ -121,7 +108,7 @@ public class Master implements Runnable {
     }
 
     private synchronized void markAsSolved(SolutionPayload s) {
-        this.solution = s;
+        MasterConfiguration.solution = s;
         log("Solution found: " + s);
     }
 
@@ -177,6 +164,7 @@ public class Master implements Runnable {
         if (MasterConfiguration.startMillis == 0) {
             MasterConfiguration.startMillis = System.currentTimeMillis();
         }
+        log("start millis: " + MasterConfiguration.startMillis);
 
         // create payload of primes
         PrimesPayload primesPayload = new PrimesPayload(StaticConfiguration.primes);
@@ -319,6 +307,7 @@ public class Master implements Runnable {
             };
         }
 
+        @SuppressWarnings("SameReturnValue")
         private MultiMessage handleJoin(Message m) {
             JoinPayload joinPayload = (JoinPayload) m.getPayload();
             this.workers = joinPayload.getWorkers();

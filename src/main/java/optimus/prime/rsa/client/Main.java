@@ -4,10 +4,7 @@ import optimus.prime.rsa.Message;
 import optimus.prime.rsa.MessageType;
 import optimus.prime.rsa.argumentparser.ArgumentParser;
 import optimus.prime.rsa.argumentparser.ArgumentBlueprint;
-import optimus.prime.rsa.payloads.HostsPayload;
-import optimus.prime.rsa.payloads.MasterAddressPayload;
-import optimus.prime.rsa.payloads.MissionPayload;
-import optimus.prime.rsa.payloads.SolutionPayload;
+import optimus.prime.rsa.payloads.*;
 import optimus.prime.rsa.server.config.StaticConfiguration;
 
 import java.io.*;
@@ -85,19 +82,20 @@ public class Main {
             return;
         }
 
-        SolutionPayload solution = null;
+        MissionResponsePayload missionResponsePayload = null;
         List<InetAddress> hosts = null;
         boolean lostMaster = false;
 
         // loop that makes sure that we connect to the current
         // master
+        outerLoop:
         do {
             try (
                 Socket socket = new Socket(masterAddress, port);
                 InputStream inputStream = socket.getInputStream();
                 ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
                 OutputStream outputStream = socket.getOutputStream();
-                ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
+                ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream)
             ) {
                 // receive
                 do {
@@ -125,17 +123,23 @@ public class Main {
                             MasterAddressPayload masterAddressPayload = (MasterAddressPayload) message.getPayload();
                             masterAddress = masterAddressPayload.getMasterAddress();
                             System.out.println("Client - connected to the slave " + slaveIp.getHostAddress() + " - told us that the master is " + masterAddress.getHostAddress());
+                            continue outerLoop;
                         }
                         case MASTER_SOLUTION_FOUND -> {
-                            solution = (SolutionPayload) message.getPayload();
+                            missionResponsePayload = (MissionResponsePayload) message.getPayload();
+                            Message missionMessage = new Message(MessageType.CLIENT_EXIT_ACKNOWLEDGE);
+                            objectOutputStream.writeObject(missionMessage);
+                            objectOutputStream.flush();
                         }
                         case MASTER_HOSTS_LIST -> {
+                            System.out.println("Client - update of hosts list received");
                             HostsPayload hostsPayload = (HostsPayload) message.getPayload();
                             hosts = hostsPayload.getHosts();
                         }
+                        case MASTER_BUSY -> System.out.println("Client - Master is busy. The new mission was refused. Stay to receive the result of the current mission.");
                         default -> {}
                     }
-                } while (solution == null);
+                } while (missionResponsePayload == null);
 
             } catch (ClassNotFoundException | IOException e) {
                 System.out.println("Client - Lost connection to master " + masterAddress.getHostAddress());
@@ -144,7 +148,6 @@ public class Main {
                     // noinspection ConstantConditions
                     masterAddress = hosts.remove(0);
                     for (int i = 0; i < StaticConfiguration.MASTER_RESTART_TIMEOUT; i += 50) {
-                        // noinspection BusyWait
                         Thread.sleep(50);
                         System.out.print(".");
                     }
@@ -157,9 +160,10 @@ public class Main {
                 }
             }
 
-        } while (solution == null);
+        } while (missionResponsePayload == null);
 
-        System.out.println("Client - The solution is " + solution);
+        System.out.println("Client - The solution is " + missionResponsePayload.getSolution());
+        System.out.println("Client - The text is \"" + missionResponsePayload.getText() + "\"");
         System.out.println("Client - Bye :)");
     }
 }

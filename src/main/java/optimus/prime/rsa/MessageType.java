@@ -6,6 +6,7 @@ public enum MessageType {
     every type of message sent by the master has the prefix "MASTER"
     every type of message sent by the client has the prefix "CLIENT"
     */
+    MASTER_BUSY,
     MASTER_HOSTS_LIST,
     MASTER_DO_WORK,
     MASTER_EXIT,
@@ -24,4 +25,5 @@ public enum MessageType {
     SLAVE_NOT_MASTER,
     SLAVE_GET_FIRST_SLICE,
     CLIENT_NEW_MISSION,
+    CLIENT_EXIT_ACKNOWLEDGE,
 }
