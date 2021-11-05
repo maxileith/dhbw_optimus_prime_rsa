@@ -6,6 +6,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 import optimus.prime.rsa.ConsoleColors;
@@ -393,7 +395,7 @@ public class Master implements Runnable {
 
     private static class Broadcaster implements Runnable {
 
-        private final Map<InetAddress, SyncedObjectOutputStream> streams = new HashMap<>();
+        private final ConcurrentMap<InetAddress, SyncedObjectOutputStream> streams = new ConcurrentHashMap<>();
         private final Queue<Message> queue = new LinkedList<>();
         private boolean running = true;
 
