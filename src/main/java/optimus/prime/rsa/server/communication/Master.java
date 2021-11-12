@@ -284,7 +284,6 @@ public class Master implements Runnable {
             } catch (IOException e) {
                 if (this.running) {
                     err("Object Input stream closed " + e);
-                    e.printStackTrace();
                     // Slave died
                     abortSlice(this.currentSlice);
                 } else {

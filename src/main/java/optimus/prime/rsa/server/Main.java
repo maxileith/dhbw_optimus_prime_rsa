@@ -117,7 +117,9 @@ public class Main {
 
             loop();
 
-            clientHandler.sendSolution();
+            if (MasterConfiguration.isMaster) {
+                clientHandler.sendSolution();
+            }
 
             System.out.println("Main          - stopping client handler ...");
             clientHandler.stop();

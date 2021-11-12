@@ -134,7 +134,7 @@ public class ClientHandler implements Runnable {
         try {
             this.objectOutputStream.writeObject(solutionMessage);
             this.objectOutputStream.flush();
-        } catch (IOException e) {
+        } catch (NullPointerException | IOException e) {
             err("Failed to send the solution to the client - " + e);
         }
     }
