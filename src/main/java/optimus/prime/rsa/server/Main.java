@@ -110,7 +110,7 @@ public class Main {
 
         // noinspection InfiniteLoopStatement
         while (true) {
-            ClientHandler clientHandler = ClientHandler.getInstance();
+            ClientHandler clientHandler = ClientHandler.newInstance();
             Thread clientHandlerThread = new Thread(clientHandler);
             System.out.println("Main          - starting client handler ...");
             clientHandlerThread.start();

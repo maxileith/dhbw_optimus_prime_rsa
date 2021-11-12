@@ -26,6 +26,11 @@ public class ClientHandler implements Runnable {
 
     private static ClientHandler instance;
 
+    public synchronized static ClientHandler newInstance() {
+        instance = new ClientHandler();
+        return instance;
+    }
+
     public synchronized static ClientHandler getInstance() {
         if (instance == null) {
             instance = new ClientHandler();
