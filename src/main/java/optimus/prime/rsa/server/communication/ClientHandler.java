@@ -3,6 +3,7 @@ package optimus.prime.rsa.server.communication;
 import optimus.prime.rsa.ConsoleColors;
 import optimus.prime.rsa.Message;
 import optimus.prime.rsa.MessageType;
+import optimus.prime.rsa.payloads.HostsPayload;
 import optimus.prime.rsa.payloads.MasterAddressPayload;
 import optimus.prime.rsa.payloads.MissionPayload;
 import optimus.prime.rsa.payloads.MissionResponsePayload;
@@ -23,7 +24,27 @@ public class ClientHandler implements Runnable {
     private ObjectOutputStream objectOutputStream;
     private ObjectInputStream objectInputStream;
 
-    public ClientHandler() {
+    private static ClientHandler instance;
+
+    public synchronized static ClientHandler getInstance() {
+        if (instance == null) {
+            instance = new ClientHandler();
+        }
+        return instance;
+    }
+
+    public synchronized void notifyHostListChanged() {
+        HostsPayload hostsPayload = new HostsPayload(NetworkConfiguration.hosts);
+        Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
+        try {
+            getInstance().objectOutputStream.writeObject(hostsMessage);
+            getInstance().objectOutputStream.flush();
+        } catch (NullPointerException | IOException e) {
+            err("Failed to send the hosts to the client - " + e);
+        }
+    }
+
+    private ClientHandler() {
         try {
             this.serverSocket = new ServerSocket(
                     StaticConfiguration.CLIENT_PORT,

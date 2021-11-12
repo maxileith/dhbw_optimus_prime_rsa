@@ -302,6 +302,7 @@ public class Master implements Runnable {
                 HostsPayload hostsPayload = new HostsPayload(NetworkConfiguration.hosts);
                 Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
                 broadcaster.send(hostsMessage);
+                ClientHandler.getInstance().notifyHostListChanged();
             }
 
             log("Terminated");
@@ -337,6 +338,7 @@ public class Master implements Runnable {
                 HostsPayload hostsPayload = new HostsPayload(NetworkConfiguration.hosts);
                 Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
                 this.broadcaster.send(hostsMessage);
+                ClientHandler.getInstance().notifyHostListChanged();
             } else {
                 log("Skip sending updating the hosts list because slave is hosted on the same system as the master");
             }
