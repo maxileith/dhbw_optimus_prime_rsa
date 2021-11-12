@@ -149,7 +149,9 @@ public class Master implements Runnable {
     private synchronized void abortSlice(SlicePayload slice) {
         log("Slice " + slice + " added to lost slices");
         this.slicesInProgress.remove(slice);
-        MasterConfiguration.lostSlices.add(slice);
+        if (slice != null) {
+            MasterConfiguration.lostSlices.add(slice);
+        }
     }
 
     private Queue<SlicePayload> getLostSlices() {
