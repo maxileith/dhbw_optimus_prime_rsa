@@ -162,41 +162,49 @@ public class Master implements Runnable {
         return lostSlices;
     }
 
+    private MultiMessage collectMissionDetails() {
+        MultiMessage out = new MultiMessage();
+
+        // create payload of primes
+        PrimesPayload primesPayload = new PrimesPayload(StaticConfiguration.primes);
+        Message primesMessage = new Message(MessageType.MASTER_SEND_PRIMES, primesPayload);
+        out.addMessage(primesMessage);
+        log("mission details: primes");
+
+        // create payload for the public key
+        PubKeyRsaPayload pubKeyRsaPayload = new PubKeyRsaPayload(StaticConfiguration.PUB_RSA_KEY);
+        Message pubKeyRsaMessage = new Message(MessageType.MASTER_SEND_PUB_KEY_RSA, pubKeyRsaPayload);
+        out.addMessage(pubKeyRsaMessage);
+        log("mission details: public key: \"" + StaticConfiguration.PUB_RSA_KEY + "\"");
+
+        // create payload for the cipher
+        CipherPayload cipherPayload = new CipherPayload(StaticConfiguration.CIPHER);
+        Message cipherMessage = new Message(MessageType.MASTER_CIPHER, cipherPayload);
+        out.addMessage(cipherMessage);
+        log("mission details: cipher: \"" + StaticConfiguration.CIPHER + "\"");
+
+        // create payload for the start time
+        StartMillisPayload startMillisPayload = new StartMillisPayload(MasterConfiguration.startMillis);
+        Message startMillisMessage = new Message(MessageType.MASTER_START_MILLIS, startMillisPayload);
+        out.addMessage(startMillisMessage);
+        log("mission details: start millis: " + MasterConfiguration.startMillis);
+
+        // start message
+        // empty payload is the "start"
+        Message startMessage = new Message(MessageType.MASTER_START_MESSAGE);
+        out.addMessage(startMessage);
+        log("mission details: start message");
+
+        return out;
+    }
+
     private void broadcastMissionDetails() {
         if (MasterConfiguration.startMillis == 0) {
             MasterConfiguration.startMillis = System.currentTimeMillis();
         }
         log("start millis: " + MasterConfiguration.startMillis);
 
-        // create payload of primes
-        PrimesPayload primesPayload = new PrimesPayload(StaticConfiguration.primes);
-        Message primesMessage = new Message(MessageType.MASTER_SEND_PRIMES, primesPayload);
-        broadcaster.send(primesMessage);
-        log("Sending primes to Slave");
-
-        // create payload for the public key
-        PubKeyRsaPayload pubKeyRsaPayload = new PubKeyRsaPayload(StaticConfiguration.PUB_RSA_KEY);
-        Message pubKeyRsaMessage = new Message(MessageType.MASTER_SEND_PUB_KEY_RSA, pubKeyRsaPayload);
-        broadcaster.send(pubKeyRsaMessage);
-        log("Sending the public key: \"" + StaticConfiguration.PUB_RSA_KEY + "\"");
-
-        // create payload for the cipher
-        CipherPayload cipherPayload = new CipherPayload(StaticConfiguration.CIPHER);
-        Message cipherMessage = new Message(MessageType.MASTER_CIPHER, cipherPayload);
-        broadcaster.send(cipherMessage);
-        log("Sending the cipher: \"" + StaticConfiguration.CIPHER + "\"");
-
-        // create payload for the start time
-        StartMillisPayload startMillisPayload = new StartMillisPayload(MasterConfiguration.startMillis);
-        Message startMillisMessage = new Message(MessageType.MASTER_START_MILLIS, startMillisPayload);
-        broadcaster.send(startMillisMessage);
-        log("Sending the start millis: " + MasterConfiguration.startMillis);
-
-        // start message
-        // empty payload is the "start"
-        Message startMessage = new Message(MessageType.MASTER_START_MESSAGE);
-        broadcaster.send(startMessage);
-        log("Sending start message");
+        this.collectMissionDetails().getAllMessages().forEach(broadcaster::send);
     }
 
 
@@ -331,7 +339,11 @@ public class Master implements Runnable {
                 log("Skip sending updating the hosts list because slave is hosted on the same system as the master");
             }
 
-            return null;
+            if (alreadyStarted) {
+                return collectMissionDetails();
+            } else {
+                return null;
+            }
         }
 
         private MultiMessage handleWorkNeeded(boolean firstWork) {
