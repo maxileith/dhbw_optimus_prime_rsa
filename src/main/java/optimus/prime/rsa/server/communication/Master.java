@@ -106,7 +106,6 @@ public class Master implements Runnable {
                 broadcastMissionDetails();
             }
         }
-        log("Stopping ConnectionHandlers");
     }
 
     private synchronized void markAsSolved(SolutionPayload s) {
