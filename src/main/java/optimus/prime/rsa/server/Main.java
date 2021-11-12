@@ -117,10 +117,6 @@ public class Main {
 
             loop();
 
-            if (MasterConfiguration.isMaster) {
-                clientHandler.sendSolution();
-            }
-
             System.out.println("Main          - stopping client handler ...");
             clientHandler.stop();
             System.out.println("Main          - waiting for the client handler to terminate ...");
@@ -151,8 +147,6 @@ public class Main {
                 Utils.err("Main          - error while waiting for the restart timeout to expire - " + e);
             }
         }
-
-        // System.out.println("Main          - Bye :)");
     }
 
     private static void loop() {

@@ -82,9 +82,14 @@ public class ClientHandler implements Runnable {
                 if (MasterConfiguration.isMaster) {
                     // this host is the master
                     log("sending confirmation that this host is the master");
-
                     Message masterConfirmMessage = new Message(MessageType.MASTER_CONFIRM);
                     this.objectOutputStream.writeObject(masterConfirmMessage);
+                    this.objectOutputStream.flush();
+
+                    log("sending hosts list to the client");
+                    HostsPayload hostsPayload = new HostsPayload(NetworkConfiguration.hosts);
+                    Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
+                    this.objectOutputStream.writeObject(hostsMessage);
                     this.objectOutputStream.flush();
 
                     this.handleClientAsMaster();
@@ -152,7 +157,6 @@ public class ClientHandler implements Runnable {
         if (MasterConfiguration.solution != null) {
             RSAHelper rsaHelper = new RSAHelper();
             text = rsaHelper.decrypt(MasterConfiguration.solution.getPrime1().toString(), MasterConfiguration.solution.getPrime2().toString(), StaticConfiguration.CIPHER);
-
         }
         MissionResponsePayload missionResponsePayload = new MissionResponsePayload(MasterConfiguration.solution, text);
         Message solutionMessage = new Message(MessageType.MASTER_SOLUTION_FOUND, missionResponsePayload);

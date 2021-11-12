@@ -75,6 +75,8 @@ public class Master implements Runnable {
             log("The solution cannot be found in the given prime numbers.");
         }
 
+        ClientHandler.getInstance().sendSolution();
+
         long endMillis = System.currentTimeMillis();
         long duration = endMillis - MasterConfiguration.startMillis;
 
@@ -102,9 +104,6 @@ public class Master implements Runnable {
                 this.alreadyStarted = true;
                 log("Broadcasting mission details.");
                 broadcastMissionDetails();
-            }
-            if (MasterConfiguration.solution != null) {
-                break;
             }
         }
         log("Stopping ConnectionHandlers");
@@ -290,7 +289,7 @@ public class Master implements Runnable {
                     // Slave died
                     abortSlice(this.currentSlice);
                 } else {
-                    log("Slave disconnected because solution was found.");
+                    log("Slave disconnected on purpose.");
                 }
             } catch (ClassNotFoundException e) {
                 err("Class of incoming object unknown - " + e);
