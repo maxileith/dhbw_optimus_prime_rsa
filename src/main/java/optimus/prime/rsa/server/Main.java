@@ -139,6 +139,17 @@ public class Main {
             StaticConfiguration.PUB_RSA_KEY = BigInteger.ZERO;
             StaticConfiguration.primes = null;
             StaticConfiguration.CIPHER = "";
+
+            try {
+                for (int i = 0; i < 1000 && !MasterConfiguration.isMaster; i += 50) {
+                    // noinspection BusyWait
+                    Thread.sleep(50);
+                    System.out.print(".");
+                }
+                System.out.println();
+            } catch (InterruptedException e) {
+                Utils.err("Main          - error while waiting for the restart timeout to expire - " + e);
+            }
         }
 
         // System.out.println("Main          - Bye :)");

@@ -103,6 +103,9 @@ public class Master implements Runnable {
                 log("Broadcasting mission details.");
                 broadcastMissionDetails();
             }
+            if (MasterConfiguration.solution != null) {
+                break;
+            }
         }
         log("Stopping ConnectionHandlers");
     }
