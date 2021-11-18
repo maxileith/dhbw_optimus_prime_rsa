@@ -109,7 +109,7 @@ public class Slave implements Runnable {
                         SolutionPayload s = f.get();
                         log("received new result from a worker");
                         // Solution found
-                        if (!s.equals(SolutionPayload.NO_SOLUTION)) {
+                        if (s != null) {
                             Message m = new Message(MessageType.SLAVE_SOLUTION_FOUND, s);
                             this.objectOutputStream.writeObject(m);
                             this.objectOutputStream.flush();

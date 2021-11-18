@@ -39,7 +39,7 @@ public class Worker implements Callable<SolutionPayload> {
             for (int b = a + 1; b < this.primes.size(); b++) {
                 if (Thread.currentThread().isInterrupted()) {
                     System.out.println(LOG_INTERRUPTED);
-                    return SolutionPayload.NO_SOLUTION;
+                    return null;
                 }
                 BigInteger bInt = this.primes.get(b);
                 if (this.rsaHelper.isValid(aInt, bInt, this.pubRsaKey)) { // TODO: Verify whether correct positioning
@@ -50,6 +50,6 @@ public class Worker implements Callable<SolutionPayload> {
         }
 
         System.out.printf((LOG_MESSAGE_NO_SOLUTION) + "%n", this.slice);
-        return SolutionPayload.NO_SOLUTION;
+        return null;
     }
 }
