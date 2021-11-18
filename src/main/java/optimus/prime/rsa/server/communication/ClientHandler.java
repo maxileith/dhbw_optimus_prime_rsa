@@ -45,7 +45,7 @@ public class ClientHandler implements Runnable {
             getInstance().objectOutputStream.writeObject(hostsMessage);
             getInstance().objectOutputStream.flush();
         } catch (NullPointerException | IOException e) {
-            err("Failed to send the hosts to the client - " + e);
+            log("no client to send the host list to.");
         }
     }
 
