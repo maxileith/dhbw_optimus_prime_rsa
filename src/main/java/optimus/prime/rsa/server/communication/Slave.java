@@ -93,8 +93,8 @@ public class Slave implements Runnable {
 
                 // do the math
                 log("Assigning new work to the workers ...");
-                int concurrentSlices = this.currentMinorSlices.size();
-                while (!this.currentMinorSlices.isEmpty()) {
+                int concurrentSlices = this.currentMinorSlices == null ? 0 : this.currentMinorSlices.size();
+                while (this.currentMinorSlices != null && !this.currentMinorSlices.isEmpty()) {
                     this.cs.submit(new Worker(
                             this.currentMinorSlices.remove(),
                             StaticConfiguration.primes,
