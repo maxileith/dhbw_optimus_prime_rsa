@@ -86,17 +86,10 @@ public class Master implements Runnable {
         log("Thread terminated");
     }
 
-    private boolean test() {
-        return !alreadyStarted || (!this.serverSocket.isClosed() && MasterConfiguration.solution == null && (MasterConfiguration.currentSliceStart != StaticConfiguration.primes.size() || !this.slicesInProgress.isEmpty() || !MasterConfiguration.lostSlices.isEmpty()));
-    }
-
     private void distributeConnections() throws IOException {
-        while (test()) {
+        while (!alreadyStarted || (!this.serverSocket.isClosed() && MasterConfiguration.solution == null && (MasterConfiguration.currentSliceStart != StaticConfiguration.primes.size() || !this.slicesInProgress.isEmpty() || !MasterConfiguration.lostSlices.isEmpty()))) {
             try {
                 Socket slave = this.serverSocket.accept();
-                if (!test()) {
-                    return;
-                }
                 log("Connection from " + slave + " established.");
                 ConnectionHandler handler = new ConnectionHandler(
                         slave,

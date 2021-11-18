@@ -164,7 +164,7 @@ public class Main {
 
             MasterConfiguration.isMaster = NetworkConfiguration.ownAddresses.contains(NetworkConfiguration.masterAddress);
             // give the new master some time to start
-            if (!MasterConfiguration.isMaster && LOST_MASTER) {
+            if (!MasterConfiguration.isMaster) {
                 System.out.println("Main   - The new master is " + NetworkConfiguration.masterAddress.getHostAddress());
                 System.out.println("Main   - Waiting " + StaticConfiguration.MASTER_RESTART_TIMEOUT + "ms for the new master to start ...");
                 try {
