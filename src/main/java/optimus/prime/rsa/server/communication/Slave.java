@@ -237,7 +237,7 @@ public class Slave implements Runnable {
                     case MASTER_EXIT -> this.stopReceiver();
                     case MASTER_SEND_PRIMES -> this.handleMasterSendPrimes(m);
                     case MASTER_SEND_PUB_KEY_RSA -> this.handleMasterSendPubKeyRsa(m);
-                    case MASTER_LOST_SLICES -> this.handleProgressUpdate(m);
+                    case MASTER_PROGRESS -> this.handleProgressUpdate(m);
                     case MASTER_CIPHER -> this.handleCipher(m);
                     case MASTER_START_MILLIS -> this.handleStartMillis(m);
                     case MASTER_START_MESSAGE -> this.handleStartMessage();

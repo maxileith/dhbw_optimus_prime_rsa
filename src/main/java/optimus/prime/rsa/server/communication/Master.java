@@ -366,7 +366,7 @@ public class Master implements Runnable {
 
                 // send progress to all slaves
                 ProgressPayload progressPayload = new ProgressPayload(getLostSlices(), MasterConfiguration.currentSliceStart);
-                Message progressMessage = new Message(MessageType.MASTER_LOST_SLICES, progressPayload);
+                Message progressMessage = new Message(MessageType.MASTER_PROGRESS, progressPayload);
                 this.broadcaster.send(progressMessage);
 
             } catch (NoSuchElementException ignored) {
