@@ -43,7 +43,7 @@ The following arguments are **recommended** to use:
 * `--master-address`: Use a non-localhost address, that is used by a NIC on the host
 
 ```bash
-java -jar optimus-prime-rsa-0.1-server.jar --master-address 192.168.42.100
+java -jar optimus-prime-rsa-v1.0-server.jar --master-address 192.168.42.100
 ```
 
 ### Starting a _slave_
@@ -53,7 +53,7 @@ The following arguments are required:
 * `--master-address`: Specify the master address. Hint: This has to be an address not associated to any NIC on the host.
 
 ```bash
-java -jar optimus-prime-rsa-0.1-server.jar --master-address 192.168.42.100
+java -jar optimus-prime-rsa-v1.0-server.jar --master-address 192.168.42.100
 ```
 
 ### Command line arguments
@@ -92,7 +92,7 @@ The following arguments are **recommended** to use:
 * `--primes`: Specify the primes list to use
 
 ```bash
-java -jar optimus-prime-rsa-0.1-client.jar \
+java -jar optimus-prime-rsa-v1.0-client.jar \
     --ip-address 192.168.42.100 \
     --pub-key-rsa 237023640130486964288372516117459992717 \
     --cipher a9fc180908ad5f60556fa42b3f76e30f48bcddfad906f312b6ca429f25cebbd0 \
