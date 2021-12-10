@@ -19,7 +19,7 @@ public class ArgumentParser {
     }
 
     public void load(String[] args) {
-        Pattern keyPattern = Pattern.compile("^--([^\s]+)$");
+        Pattern keyPattern = Pattern.compile("^--([^\\s]+)$");
 
         for (String a : args) {
             if (a.equals("--help")) {

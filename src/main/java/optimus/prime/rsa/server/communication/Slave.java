@@ -296,16 +296,36 @@ public class Slave implements Runnable {
             log("Received MultiMessage");
             for (Message m : messages.getAllMessages()) {
                 switch (m.getType()) {
-                    case MASTER_HOSTS_LIST -> this.handleHostList(m);
-                    case MASTER_DO_WORK -> this.handleDoWork(m);
-                    case MASTER_EXIT -> this.stopReceiver();
-                    case MASTER_SEND_PRIMES -> this.handleMasterSendPrimes(m);
-                    case MASTER_SEND_PUB_KEY_RSA -> this.handleMasterSendPubKeyRsa(m);
-                    case MASTER_PROGRESS -> this.handleProgressUpdate(m);
-                    case MASTER_CIPHER -> this.handleCipher(m);
-                    case MASTER_START_MILLIS -> this.handleStartMillis(m);
-                    case MASTER_START_MESSAGE -> this.handleStartMessage();
-                    default -> log("Unexpected message type");
+                    case MASTER_HOSTS_LIST:
+                        this.handleHostList(m);
+                        break;
+                    case MASTER_DO_WORK:
+                        this.handleDoWork(m);
+                        break;
+                    case MASTER_EXIT:
+                        this.stopReceiver();
+                        break;
+                    case MASTER_SEND_PRIMES:
+                        this.handleMasterSendPrimes(m);
+                        break;
+                    case MASTER_SEND_PUB_KEY_RSA:
+                        this.handleMasterSendPubKeyRsa(m);
+                        break;
+                    case MASTER_PROGRESS:
+                        this.handleProgressUpdate(m);
+                        break;
+                    case MASTER_CIPHER:
+                        this.handleCipher(m);
+                        break;
+                    case MASTER_START_MILLIS:
+                        this.handleStartMillis(m);
+                        break;
+                    case MASTER_START_MESSAGE:
+                        this.handleStartMessage();
+                        break;
+                    default:
+                        log("Unexpected message type");
+                        break;
                 }
             }
         }
@@ -431,7 +451,7 @@ public class Slave implements Runnable {
          *
          * @param s {@link String} to log
          */
-        private static void log(String s) {
+        private void log(String s) {
             System.out.println(ConsoleColors.CYAN_BRIGHT + "Slave         - Receiver - " + s + ConsoleColors.RESET);
         }
 
@@ -440,7 +460,7 @@ public class Slave implements Runnable {
          *
          * @param s {@link String} to log as an error
          */
-        private static void err(String s) {
+        private void err(String s) {
             Utils.err("Slave         - Receiver - " + s);
         }
     }

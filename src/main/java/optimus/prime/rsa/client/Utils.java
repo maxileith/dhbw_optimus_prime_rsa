@@ -2,9 +2,11 @@ package optimus.prime.rsa.client;
 
 import java.io.*;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * A collection of static utility methods
@@ -49,6 +51,6 @@ public class Utils {
         }
 
         // return primes as a list
-        return primes.stream().toList();
+        return new ArrayList<>(primes);
     }
 }

@@ -162,7 +162,7 @@ public class ClientHandler implements Runnable {
                 // waiting for a message
                 Message message = (Message) this.objectInputStream.readObject();
                 switch (message.getType()) {
-                    case CLIENT_NEW_MISSION -> {
+                    case CLIENT_NEW_MISSION:
                         // client wants to submit a new mission
                         if (StaticConfiguration.CIPHER.equals("") && StaticConfiguration.PUB_RSA_KEY.equals(BigInteger.ZERO) && StaticConfiguration.primes == null) {
                             log("Message received - " + message.getType());
@@ -185,14 +185,15 @@ public class ClientHandler implements Runnable {
                             this.objectOutputStream.writeObject(masterConfirmMessage);
                             this.objectOutputStream.flush();
                         }
-                    }
-                    case CLIENT_EXIT_ACKNOWLEDGE -> {
+                        break;
+                    case CLIENT_EXIT_ACKNOWLEDGE:
                         // client acknowledged exit
                         // return to main loop
                         log("Received exit acknowledgement. Closing connection.");
                         return;
-                    }
-                    default -> err("Unexpected message type - " + message.getType());
+                    default:
+                        err("Unexpected message type - " + message.getType());
+                        break;
                 }
             } catch (ClassNotFoundException e) {
                 err("Class of incoming object unknown - " + e);

@@ -24,7 +24,6 @@ The master must be started first. After that, slaves and clients can connect.
 
 **Requirements:**
 
-* The Java Runtime supports class file version `60.0`
 * On each server, the firewall is opened for port `2504` and `2505` or as specified in `--intra-port` and `--client-port`
   for incoming TCP traffic.
 
@@ -70,10 +69,6 @@ java -jar optimus-prime-rsa-v1.0-server.jar --master-address 192.168.42.100
 ## Starting the _client_
 
 The master must be started first. After that a client can connect.
-
-**Requirements:**
-
-* The Java Runtime supports class file version `60.0`
 
 In the following, the following **preconditions are assumed**:
 

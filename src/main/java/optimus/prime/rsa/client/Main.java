@@ -111,7 +111,7 @@ public class Main {
                     // wait for message
                     Message message = (Message) objectInputStream.readObject();
                     switch (message.getType()) {
-                        case MASTER_CONFIRM -> {
+                        case MASTER_CONFIRM:
                             // we are connected to the master,
                             // send the mission
                             System.out.println("Client - connected to the master " + masterAddress.getHostAddress());
@@ -128,8 +128,8 @@ public class Main {
                             } else {
                                 lostMaster = false;
                             }
-                        }
-                        case SLAVE_NOT_MASTER -> {
+                            break;
+                        case SLAVE_NOT_MASTER:
                             // the server that we are connected to is not the master
                             InetAddress slaveIp = masterAddress;
                             MasterAddressPayload masterAddressPayload = (MasterAddressPayload) message.getPayload();
@@ -138,26 +138,24 @@ public class Main {
                             System.out.println("Client - connected to the slave " + slaveIp.getHostAddress() + " - told us that the master is " + masterAddress.getHostAddress());
                             // jump back to the outerLoop (reconnect to the right server)
                             continue outerLoop;
-                        }
-                        case MASTER_SOLUTION_FOUND -> {
+                        case MASTER_SOLUTION_FOUND:
                             // save the solution
                             missionResponsePayload = (MissionResponsePayload) message.getPayload();
                             // tell the server that we are existing
                             Message missionMessage = new Message(MessageType.CLIENT_EXIT_ACKNOWLEDGE);
                             objectOutputStream.writeObject(missionMessage);
                             objectOutputStream.flush();
-                        }
-                        case MASTER_HOSTS_LIST -> {
+                            break;
+                        case MASTER_HOSTS_LIST:
                             // update the list of server in the distributed system
                             System.out.println("Client - update of hosts list received");
                             HostsPayload hostsPayload = (HostsPayload) message.getPayload();
                             hosts = hostsPayload.getHosts();
-                        }
-                        case MASTER_BUSY -> {
+                            break;
+                        case MASTER_BUSY:
                             // master has already a mission --> tell the user
                             System.out.println("Client - Master is busy. The new mission was refused. Stay to receive the result of the current mission.");
-                        }
-                        default -> {}
+                            break;
                     }
                 } while (missionResponsePayload == null);
 

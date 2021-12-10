@@ -438,14 +438,30 @@ public class Master implements Runnable {
          */
         private MultiMessage handleMessage(Message m) {
             log("Received message");
-            return switch (m.getType()) {
-                case SLAVE_JOIN -> this.handleJoin(m);
-                case SLAVE_FINISHED_WORK -> this.handleWorkNeeded(false);
-                case SLAVE_SOLUTION_FOUND -> this.handleSolutionFound(m);
-                case SLAVE_EXIT_ACKNOWLEDGE -> this.handleExitAcknowledge();
-                case SLAVE_GET_FIRST_SLICE -> this.handleWorkNeeded(true);
-                default -> MultiMessage.NONE;
-            };
+            MultiMessage response;
+
+            switch (m.getType()) {
+                case SLAVE_JOIN:
+                    response = this.handleJoin(m);
+                    break;
+                case SLAVE_FINISHED_WORK:
+                    response = this.handleWorkNeeded(false);
+                    break;
+                case SLAVE_SOLUTION_FOUND:
+                    response = this.handleSolutionFound(m);
+                    break;
+                case SLAVE_EXIT_ACKNOWLEDGE:
+                    response = this.handleExitAcknowledge();
+                    break;
+                case SLAVE_GET_FIRST_SLICE:
+                    response = this.handleWorkNeeded(true);
+                    break;
+                default:
+                    response = MultiMessage.NONE;
+                    break;
+            }
+
+            return response;
         }
 
         /**
