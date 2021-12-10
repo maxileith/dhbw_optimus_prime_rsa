@@ -177,7 +177,7 @@ public class Main {
             if (LOST_MASTER) {
                 try {
                     NetworkConfiguration.masterAddress = NetworkConfiguration.hosts.remove(0);
-                } catch (IndexOutOfBoundsException e) {
+                } catch (IndexOutOfBoundsException | NullPointerException e) {
                     Utils.err("Main   - There are no known hosts left - " + e);
                     return;
                 }
