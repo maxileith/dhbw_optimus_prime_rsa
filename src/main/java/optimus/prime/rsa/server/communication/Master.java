@@ -500,6 +500,12 @@ public class Master implements Runnable {
             }
         }
 
+        /**
+         * Get new work for a slave
+         *
+         * @param firstWork specifies if this is the first time the slave needs work
+         * @return {@link MultiMessage}
+         */
         private MultiMessage handleWorkNeeded(boolean firstWork) {
             log("Slave needs new work");
             // except TaskPayload
@@ -522,14 +528,22 @@ public class Master implements Runnable {
                 this.broadcaster.send(progressMessage);
 
             } catch (NoSuchElementException ignored) {
+                // send MASTER_EXIT if there are no more slices
                 log("No more slices to do -> sending MASTER_EXIT");
                 Message exitMessage = new Message(MessageType.MASTER_EXIT);
                 response.addMessage(exitMessage);
             }
 
+            // return multi message
             return response;
         }
 
+        /**
+         * report that a solution has been found
+         *
+         * @param m {@link Message} of type SLAVE_SOLUTION_FOUND
+         * @return null
+         */
         @SuppressWarnings("SameReturnValue")
         private MultiMessage handleSolutionFound(Message m) {
             log("Found solution");
@@ -545,9 +559,15 @@ public class Master implements Runnable {
             return null;
         }
 
+        /**
+         * Do some required stuff after the slave exits
+         *
+         * @return null
+         */
         @SuppressWarnings("SameReturnValue")
         private MultiMessage handleExitAcknowledge() {
             log("Slave acknowledged exit");
+            // stop main loop
             this.running = false;
             try {
                 this.slave.close();
@@ -556,10 +576,20 @@ public class Master implements Runnable {
             return null;
         }
 
+        /**
+         * Use to log
+         *
+         * @param s {@link String} to log
+         */
         private void log(String s) {
             System.out.println(ConsoleColors.GREEN_BRIGHT + "Master        - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - " + s + ConsoleColors.RESET);
         }
 
+        /**
+         * Use to log errors
+         *
+         * @param s {@link String} to log as an error
+         */
         private void err(String s) {
             Utils.err("Master        - ConnectionHandler - " + this.slave.getInetAddress().getHostAddress() + " - " + s);
         }
