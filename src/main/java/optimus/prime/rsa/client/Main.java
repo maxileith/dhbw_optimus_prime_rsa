@@ -14,13 +14,22 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.List;
 
+/**
+ * class to start the client from
+ */
 public class Main {
 
+    /**
+     * Main loop for a client
+     *
+     * @param args command line arguments
+     */
     public static void main(String[] args) {
 
         // moves cursor to first row
         System.out.print("\033[H\033[2J");
 
+        // specify the expected command line arguments
         ArgumentParser ap = new ArgumentParser();
         ap.addArgument(
                 new ArgumentBlueprint(
@@ -60,6 +69,7 @@ public class Main {
                 )
         );
 
+        // load the command line arguments
         ap.load(args);
 
         InetAddress masterAddress = null;
@@ -86,8 +96,7 @@ public class Main {
         List<InetAddress> hosts = null;
         boolean lostMaster = false;
 
-        // loop that makes sure that we connect to the current
-        // master
+        // loop that makes sure that we connect to the current master
         outerLoop:
         do {
             try (
@@ -99,12 +108,14 @@ public class Main {
             ) {
                 // receive
                 do {
+                    // wait for message
                     Message message = (Message) objectInputStream.readObject();
                     switch (message.getType()) {
                         case MASTER_CONFIRM -> {
                             // we are connected to the master,
                             // send the mission
                             System.out.println("Client - connected to the master " + masterAddress.getHostAddress());
+                            // send the mission only if we are not reconnecting because the previous master was lost
                             if (!lostMaster) {
                                 System.out.println("Client - send new Mission");
                                 Message missionMessage = new Message(MessageType.CLIENT_NEW_MISSION, new MissionPayload(
@@ -119,40 +130,53 @@ public class Main {
                             }
                         }
                         case SLAVE_NOT_MASTER -> {
+                            // the server that we are connected to is not the master
                             InetAddress slaveIp = masterAddress;
                             MasterAddressPayload masterAddressPayload = (MasterAddressPayload) message.getPayload();
+                            // update the masterAddress to the real ip-address of the master
                             masterAddress = masterAddressPayload.getMasterAddress();
                             System.out.println("Client - connected to the slave " + slaveIp.getHostAddress() + " - told us that the master is " + masterAddress.getHostAddress());
+                            // jump back to the outerLoop (reconnect to the right server)
                             continue outerLoop;
                         }
                         case MASTER_SOLUTION_FOUND -> {
+                            // save the solution
                             missionResponsePayload = (MissionResponsePayload) message.getPayload();
+                            // tell the server that we are existing
                             Message missionMessage = new Message(MessageType.CLIENT_EXIT_ACKNOWLEDGE);
                             objectOutputStream.writeObject(missionMessage);
                             objectOutputStream.flush();
                         }
                         case MASTER_HOSTS_LIST -> {
+                            // update the list of server in the distributed system
                             System.out.println("Client - update of hosts list received");
                             HostsPayload hostsPayload = (HostsPayload) message.getPayload();
                             hosts = hostsPayload.getHosts();
                         }
-                        case MASTER_BUSY -> System.out.println("Client - Master is busy. The new mission was refused. Stay to receive the result of the current mission.");
+                        case MASTER_BUSY -> {
+                            // master has already a mission --> tell the user
+                            System.out.println("Client - Master is busy. The new mission was refused. Stay to receive the result of the current mission.");
+                        }
                         default -> {}
                     }
                 } while (missionResponsePayload == null);
 
             } catch (ClassNotFoundException | IOException e) {
+                // lost connection to the master
                 System.out.println("Client - Lost connection to master " + masterAddress.getHostAddress());
                 lostMaster = true;
                 try {
+                    // the next host of the host list is the new master
                     // noinspection ConstantConditions
                     masterAddress = hosts.remove(0);
+                    // wait for the new master to start
                     for (int i = 0; i < StaticConfiguration.MASTER_RESTART_TIMEOUT; i += 50) {
                         Thread.sleep(50);
                         System.out.print(".");
                     }
                     System.out.println();
                 } catch (NullPointerException | IndexOutOfBoundsException f) {
+                    // the hosts list is empty --> no more possible masters --> exit
                     System.err.println("Client - There are no known hosts left - " + f);
                     return;
                 } catch (InterruptedException f) {
@@ -162,6 +186,7 @@ public class Main {
 
         } while (missionResponsePayload == null);
 
+        // display the results
         System.out.println("Client - The solution is " + missionResponsePayload.getSolution());
         System.out.println("Client - The text is \"" + missionResponsePayload.getText() + "\"");
         System.out.println("Client - Bye :)");

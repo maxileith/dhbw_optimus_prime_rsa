@@ -3,6 +3,9 @@ package optimus.prime.rsa.payloads;
 import java.io.Serializable;
 import java.math.BigInteger;
 
+/**
+ * This is a solution to the mission
+ */
 @SuppressWarnings("ClassCanBeRecord")
 public class SolutionPayload implements Serializable {
     private final BigInteger prime1;

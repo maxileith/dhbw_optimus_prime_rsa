@@ -20,6 +20,13 @@ public class Worker implements Callable<SolutionPayload> {
     private final static String LOG_START_INSPECTING = ConsoleColors.BOLD + "Slave         - Worker - Start inspecting slice %s" + ConsoleColors.RESET;
     private final static String LOG_INTERRUPTED = ConsoleColors.BOLD + "Slave         - Worker - Interrupted" + ConsoleColors.RESET;
 
+    /**
+     * Sets up the worker for finding a solution
+     *
+     * @param slice the slice where the worker is trying to find the solution
+     * @param primes the {@link List} of prime numbers
+     * @param pubRsaKey the public key to find the private key for
+     */
     public Worker(SlicePayload slice, List<BigInteger> primes, BigInteger pubRsaKey) {
         this.slice = slice;
         this.primes = primes;
@@ -27,22 +34,27 @@ public class Worker implements Callable<SolutionPayload> {
         this.rsaHelper = new RSAHelper();
     }
 
+    /**
+     * tries to find a solution within the slice of the worker
+     *
+     * @return the {@link SolutionPayload} if found, otherwise null
+     */
     @Override
     public SolutionPayload call() {
         System.out.printf((LOG_START_INSPECTING) + "%n", this.slice);
         // Check for interrupt here; 7000 primes in list; solution at ~5600; time -> 1m44s
         for (int a = this.slice.getStart(); a <= this.slice.getEnd(); a++) {
             BigInteger aInt = this.primes.get(a);
-            // TODO: Optimierung in der Dokumentation berücksichtigen
             // Check for interrupt here; 7000 primes in list; solution at ~5600; time -> 1m42s
             // Faster interrupts, no performance difference when checking for interrupts here
             for (int b = a + 1; b < this.primes.size(); b++) {
+                // if thread is interrupted exit immediately
                 if (Thread.currentThread().isInterrupted()) {
                     System.out.println(LOG_INTERRUPTED);
                     return null;
                 }
                 BigInteger bInt = this.primes.get(b);
-                if (this.rsaHelper.isValid(aInt, bInt, this.pubRsaKey)) { // TODO: Verify whether correct positioning
+                if (this.rsaHelper.isValid(aInt, bInt, this.pubRsaKey)) {
                     System.out.printf((LOG_MESSAGE_SOLUTION_FOUND) + "%n", this.slice, aInt, bInt);
                     return new SolutionPayload(aInt, bInt);
                 }

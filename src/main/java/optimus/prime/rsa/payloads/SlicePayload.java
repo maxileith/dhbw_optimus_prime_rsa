@@ -2,6 +2,10 @@ package optimus.prime.rsa.payloads;
 
 import java.io.Serializable;
 
+/**
+ * This is a slice that defines the beginning and the end of a part
+ * in the list of primes
+ */
 @SuppressWarnings("ClassCanBeRecord")
 public class SlicePayload implements Serializable {
     private final int start;

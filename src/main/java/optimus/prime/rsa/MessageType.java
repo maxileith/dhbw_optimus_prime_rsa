@@ -1,8 +1,13 @@
 package optimus.prime.rsa;
 
+/**
+ * Types of messages that define the semantic meaning of the
+ * associated message and which payload it comes with
+ */
 public enum MessageType {
     /*
-    every type of message sent by a slave has prefix "SLAVE"
+    the message type defines the semantic meaning of the message
+    every type of message sent by a slave has the prefix "SLAVE"
     every type of message sent by the master has the prefix "MASTER"
     every type of message sent by the client has the prefix "CLIENT"
     */

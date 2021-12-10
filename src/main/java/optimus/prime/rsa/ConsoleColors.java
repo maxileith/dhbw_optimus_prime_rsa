@@ -1,6 +1,9 @@
 package optimus.prime.rsa;
 
 
+/**
+ * A collection of ANSI-codes to make life colorful.
+ */
 @SuppressWarnings("unused")
 public enum ConsoleColors {
 

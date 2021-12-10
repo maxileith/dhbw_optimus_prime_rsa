@@ -18,7 +18,11 @@ import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.*;
 
+/**
+ * The class that supplies the functionality of a slave
+ */
 public class Slave implements Runnable {
+
     private Socket socket;
     private ObjectOutputStream objectOutputStream;
     private Thread receiveThread;
@@ -30,9 +34,13 @@ public class Slave implements Runnable {
     private boolean running = true;
     private boolean missionStarted = false;
 
+    /**
+     * Create a new {@link Slave}
+     */
     public Slave() {
 
         try {
+            // try to connect to the master
             log("trying to connect to master ...");
             this.socket = new Socket(
                     NetworkConfiguration.masterAddress,
@@ -40,36 +48,44 @@ public class Slave implements Runnable {
             );
             log("established connection to master");
 
+            // create a new thread pool to execute the workers
             this.es = Executors.newFixedThreadPool(SlaveConfiguration.WORKERS);
             this.cs = new ExecutorCompletionService<>(es);
 
+            // make the stream for communication ready
             InputStream inputStream = this.socket.getInputStream();
             ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
             OutputStream outputStream = this.socket.getOutputStream();
             this.objectOutputStream = new ObjectOutputStream(outputStream);
 
+            // start the receiver
             Receiver receiver = new Receiver(objectInputStream);
             this.receiveThread = new Thread(receiver);
         } catch (IOException e) {
             err("The master " + NetworkConfiguration.masterAddress.getHostAddress() + " is probably not reachable - " + e);
+            // tell the Main class that the master is lost
             Main.reportMasterLost();
             this.running = false;
         }
     }
 
+    /**
+     * The method that is executed by a thread and contains the main loop
+     */
     @Override
     public void run() {
         if (!this.running) {
             return;
         }
 
+        // start receiver
         log("starting receiver ...");
         this.receiveThread.start();
 
         try {
             log("Sending hello message to master");
 
-            // sending join message to the master incl. the number of workers
+            // sending join message to the master with the number of workers
             JoinPayload joinPayload = new JoinPayload(SlaveConfiguration.WORKERS);
             Message joinMessage = new Message(MessageType.SLAVE_JOIN, joinPayload);
             this.objectOutputStream.writeObject(joinMessage);
@@ -83,6 +99,8 @@ public class Slave implements Runnable {
                     // noinspection BusyWait
                     Thread.sleep(5);
                     if (missionStarted) {
+                        // if the mission is being started, request the first slice
+                        // from the master
                         Message m = new Message(MessageType.SLAVE_GET_FIRST_SLICE);
                         this.objectOutputStream.writeObject(m);
                         this.objectOutputStream.flush();
@@ -91,9 +109,9 @@ public class Slave implements Runnable {
                     }
                 }
 
-                // do the math
                 log("Assigning new work to the workers ...");
                 int concurrentSlices = this.currentMinorSlices == null ? 0 : this.currentMinorSlices.size();
+                // assign work to the workers
                 while (this.currentMinorSlices != null && !this.currentMinorSlices.isEmpty()) {
                     this.cs.submit(new Worker(
                             this.currentMinorSlices.remove(),
@@ -102,7 +120,7 @@ public class Slave implements Runnable {
                     ));
                 }
 
-                // collect the results
+                // collect all the results
                 for (int resultsReceived = 0; resultsReceived < concurrentSlices && this.running; resultsReceived++) {
                     try {
                         Future<SolutionPayload> f = this.cs.take();
@@ -110,19 +128,25 @@ public class Slave implements Runnable {
                         log("received new result from a worker");
                         // Solution found
                         if (s != null) {
+                            // tell the master, that we have found the solution
                             Message m = new Message(MessageType.SLAVE_SOLUTION_FOUND, s);
                             this.objectOutputStream.writeObject(m);
                             this.objectOutputStream.flush();
+                            // stop the main loop
                             this.running = false;
                             log("worker found a solution! " + s);
                         }
                     } catch (ExecutionException e) {
+                        // a serious error --> exit
                         err("Error in Worker: " + e);
                         e.printStackTrace();
                         this.running = false;
                     }
                 }
 
+                // tell the master that we have finished working on the
+                // given slice. Skip this if running is false, because then
+                // the slave is exiting, and we don't want any more work.
                 if (this.running) {
                     Message m = new Message(MessageType.SLAVE_FINISHED_WORK);
                     this.objectOutputStream.writeObject(m);
@@ -150,10 +174,20 @@ public class Slave implements Runnable {
         }
     }
 
+    /**
+     * Supply a new major slice that the slave has to work on
+     *
+     * @param majorSlice the major slice that the slave has to work on
+     */
     private synchronized void setCurrentSlice(SlicePayload majorSlice) {
         this.currentMinorSlices = Utils.getNSlices(majorSlice, SlaveConfiguration.WORKERS);
     }
 
+    /**
+     * Stop the slave
+     *
+     * @param force stopping gracefully or immediately
+     */
     private void stopSlave(boolean force) {
         if (!force) {
             log("sending SLAVE_EXIT_ACKNOWLEDGE");
@@ -178,6 +212,8 @@ public class Slave implements Runnable {
         this.running = false;
 
         if (force) {
+            // interrupt all workers in the thread pool to
+            // shut them down immediately
             log("sending interrupting workers ...");
             this.es.shutdownNow();
             try {
@@ -190,29 +226,52 @@ public class Slave implements Runnable {
         }
     }
 
+    /**
+     * Use to log
+     *
+     * @param s {@link String} to log
+     */
     private static void log(String s) {
         System.out.println(ConsoleColors.MAGENTA_BRIGHT + "Slave         - " + s + ConsoleColors.RESET);
     }
 
+    /**
+     * Use to log errors
+     *
+     * @param s {@link String} to log as an error
+     */
     private static void err(String s) {
         Utils.err("Slave         - " + s);
     }
 
+    /**
+     * The receiver is responsible for handling incoming messages from the master
+     */
     private class Receiver implements Runnable {
 
         private boolean running = true;
         private final ObjectInputStream objectInputStream;
 
+        /**
+         * Create a new {@link Receiver}
+         *
+         * @param objectInputStream the {@link ObjectOutputStream} used for receiving
+         */
         public Receiver(ObjectInputStream objectInputStream) {
             this.objectInputStream = objectInputStream;
         }
 
+        /**
+         * The method that is executed by a thread and contains the main loop
+         */
         @Override
         public void run() {
             log("started");
             try {
                 while (this.running) {
+                    // wait for a message
                     MultiMessage messages = (MultiMessage) this.objectInputStream.readObject();
+                    // handle the message
                     this.handleMessages(messages);
                 }
             } catch (IOException | ClassNotFoundException e) {
@@ -228,6 +287,11 @@ public class Slave implements Runnable {
             log("terminated");
         }
 
+        /**
+         * This method handles incoming messages.
+         *
+         * @param messages {@link MultiMessage} to handle
+         */
         private void handleMessages(MultiMessage messages) {
             log("Received MultiMessage");
             for (Message m : messages.getAllMessages()) {
@@ -246,25 +310,33 @@ public class Slave implements Runnable {
             }
         }
 
+        /**
+         * Save the current hosts
+         *
+         * @param m {@link Message} of type MASTER_HOSTS_LIST
+         */
         private void handleHostList(Message m) {
             HostsPayload hostsPayload = (HostsPayload) m.getPayload();
             NetworkConfiguration.hosts = hostsPayload.getHosts();
             log("Received new host list");
         }
 
+        /**
+         * Update the current major slice to work on
+         *
+         * @param m {@link Message} of type MASTER_DO_WORK
+         */
         private void handleDoWork(Message m) {
             SlicePayload slicePayload = (SlicePayload) m.getPayload();
             setCurrentSlice(slicePayload);
             log("Received new slice to do - " + slicePayload);
         }
 
-        public void stopReceiver() {
-            log("MASTER_EXIT");
-            log("stopping receiver");
-            this.running = false;
-            stopSlave(false);
-        }
-
+        /**
+         * Save the prime numbers
+         *
+         * @param m {@link Message} of type MASTER_SEND_PRIMES
+         */
         private void handleMasterSendPrimes(Message m) {
             PrimesPayload primesPayload = (PrimesPayload) m.getPayload();
             if (!MasterConfiguration.isMaster) {
@@ -275,6 +347,11 @@ public class Slave implements Runnable {
             }
         }
 
+        /**
+         * Save the public key
+         *
+         * @param m {@link Message} of type MASTER_SEND_PUB_KEY_RSA
+         */
         private void handleMasterSendPubKeyRsa(Message m) {
             PubKeyRsaPayload pubKeyRsaPayload = (PubKeyRsaPayload) m.getPayload();
             if (!MasterConfiguration.isMaster) {
@@ -285,6 +362,11 @@ public class Slave implements Runnable {
             }
         }
 
+        /**
+         * Save the current progress
+         *
+         * @param m {@link Message} of type MASTER_PROGRESS
+         */
         private void handleProgressUpdate(Message m) {
             ProgressPayload progressPayload = (ProgressPayload) m.getPayload();
             if (!MasterConfiguration.isMaster) {
@@ -296,6 +378,11 @@ public class Slave implements Runnable {
             }
         }
 
+        /**
+         * Save the cipher
+         *
+         * @param m {@link Message} of type MASTER_CIPHER
+         */
         private void handleCipher(Message m) {
             CipherPayload cipherPayload = (CipherPayload) m.getPayload();
             if (!MasterConfiguration.isMaster) {
@@ -306,6 +393,11 @@ public class Slave implements Runnable {
             }
         }
 
+        /**
+         * Save the starting time of the mission
+         *
+         * @param m {@link Message} of type MASTER_START_MILLIS
+         */
         private void handleStartMillis(Message m) {
             StartMillisPayload startMillisPayload = (StartMillisPayload) m.getPayload();
             if (!MasterConfiguration.isMaster) {
@@ -316,15 +408,38 @@ public class Slave implements Runnable {
             }
         }
 
+        /**
+         * Start the mission
+         */
         private void handleStartMessage() {
             log("starting the mission");
             missionStarted = true;
         }
 
+        /**
+         * Stop the receiver gracefully
+         */
+        public void stopReceiver() {
+            log("MASTER_EXIT");
+            log("stopping receiver");
+            this.running = false;
+            stopSlave(false);
+        }
+
+        /**
+         * Use to log
+         *
+         * @param s {@link String} to log
+         */
         private static void log(String s) {
             System.out.println(ConsoleColors.CYAN_BRIGHT + "Slave         - Receiver - " + s + ConsoleColors.RESET);
         }
 
+        /**
+         * Use to log errors
+         *
+         * @param s {@link String} to log as an error
+         */
         private static void err(String s) {
             Utils.err("Slave         - Receiver - " + s);
         }

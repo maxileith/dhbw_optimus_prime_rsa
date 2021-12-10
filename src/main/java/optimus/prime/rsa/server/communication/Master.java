@@ -22,6 +22,9 @@ import optimus.prime.rsa.server.config.NetworkConfiguration;
 import optimus.prime.rsa.server.config.StaticConfiguration;
 import optimus.prime.rsa.server.crypto.RSAHelper;
 
+/**
+ * The class that supplies the functionality of the master
+ */
 public class Master implements Runnable {
 
     private ServerSocket serverSocket;
@@ -33,7 +36,11 @@ public class Master implements Runnable {
 
     private boolean alreadyStarted = false;
 
+    /**
+     * Create a new {@link Master}
+     */
     public Master() {
+        // create a new broadcaster
         this.broadcaster = new Broadcaster();
         this.broadcasterThread = new Thread(this.broadcaster);
 
@@ -46,6 +53,8 @@ public class Master implements Runnable {
                     MasterConfiguration.MAX_INCOMING_SLAVES,
                     NetworkConfiguration.masterAddress
             );
+            // set timeout to prevent getting stuck in the 'accept' method
+            // of the server socket
             this.serverSocket.setSoTimeout(1000);
             log("Socket opened " + this.serverSocket);
         } catch (IOException e) {
@@ -54,6 +63,10 @@ public class Master implements Runnable {
         }
     }
 
+    /**
+     * Method for the thread to execute.
+     * Contains the main loop to accept new connections from slaves
+     */
     @Override
     public void run() {
         log("starting broadcaster ...");
@@ -62,12 +75,16 @@ public class Master implements Runnable {
         try {
             log("beginning to distribute connections ...");
             log("To join a slave use arguments " + ConsoleColors.RED_UNDERLINED + "--master-address " + NetworkConfiguration.masterAddress.getHostAddress());
+            // begin to distribute connections to connection handlers
             this.distributeConnections();
+            // at this point the mission is finished
         } catch (IOException e) {
             err("exception while distributing the connections - " + e);
         }
+        // stop the master
         this.stop();
 
+        // show solution if one was found
         if (MasterConfiguration.solution != null) {
             RSAHelper helper = new RSAHelper();
             log("Decrypted text is " + ConsoleColors.UNDERLINE + helper.decrypt(MasterConfiguration.solution.getPrime1().toString(), MasterConfiguration.solution.getPrime2().toString(), StaticConfiguration.CIPHER));
@@ -75,8 +92,10 @@ public class Master implements Runnable {
             log("The solution cannot be found in the given prime numbers.");
         }
 
+        // send the solution to the client
         ClientHandler.getInstance().sendSolution();
 
+        // calculate the time needed to finish the mission
         long endMillis = System.currentTimeMillis();
         long duration = endMillis - MasterConfiguration.startMillis;
 
@@ -86,11 +105,20 @@ public class Master implements Runnable {
         log("Thread terminated");
     }
 
+    /**
+     * This method accepts connections by slaves and starts a connection handler
+     *
+     * @throws IOException if an I/O error occurs when waiting for a connection.
+     */
     private void distributeConnections() throws IOException {
+        // accept connections as long as
+        // - the mission is not already started or
+        // - no solution has been found yet and there are still slices to process
         while (!alreadyStarted || (!this.serverSocket.isClosed() && MasterConfiguration.solution == null && (MasterConfiguration.currentSliceStart != StaticConfiguration.primes.size() || !this.slicesInProgress.isEmpty() || !MasterConfiguration.lostSlices.isEmpty()))) {
             try {
                 Socket slave = this.serverSocket.accept();
                 log("Connection from " + slave + " established.");
+                // start the new connection handler
                 ConnectionHandler handler = new ConnectionHandler(
                         slave,
                         this.broadcaster
@@ -100,25 +128,43 @@ public class Master implements Runnable {
                 this.connectionHandlerThreads.add(thread);
             } catch (SocketTimeoutException ignored) {
             }
+            // As soon as the cipher, public key and the number of primes are set
+            // there is a mission that can be started --> start
             if (!this.alreadyStarted && !StaticConfiguration.PUB_RSA_KEY.equals(BigInteger.ZERO) && !StaticConfiguration.CIPHER.equals("") && StaticConfiguration.primes != null) {
                 this.alreadyStarted = true;
                 log("Broadcasting mission details.");
+                // tell every slave about the mission
                 broadcastMissionDetails();
             }
         }
     }
 
+    /**
+     * Mark the mission as solved, because a {@link SolutionPayload} was found
+     *
+     * @param s {@link SolutionPayload} of the solution that has been found
+     */
     private synchronized void markAsSolved(SolutionPayload s) {
         MasterConfiguration.solution = s;
         log("Solution found: " + s);
     }
 
+    /**
+     * Get the next major slice for a slave
+     *
+     * @param workers number of workers that the slave works with
+     * @return the major slice
+     * @throws NoSuchElementException there are no more major slices
+     */
     private synchronized SlicePayload getNextSlice(int workers) throws NoSuchElementException {
         SlicePayload slice;
 
         if (!MasterConfiguration.lostSlices.isEmpty()) {
+            // use a slice that was lost in a previous attempt to finish this slice
+            // if one is available
             slice = MasterConfiguration.lostSlices.remove();
         } else if (MasterConfiguration.currentSliceStart != StaticConfiguration.primes.size()) {
+            // make a new slice depending on the number of workers.
             int numberOfPrimes = StaticConfiguration.primes.size();
             int currentStart = MasterConfiguration.currentSliceStart;
             long checksPerSlice = workers * MasterConfiguration.MASTER_CHECKS_PER_SLICE_PER_WORKER;
@@ -138,23 +184,47 @@ public class Master implements Runnable {
             throw new NoSuchElementException();
         }
 
+        // add to the slices that are currently in progress
         this.slicesInProgress.add(slice);
+        // return the slice
         return slice;
     }
 
+    /**
+     * Mark a slice as done
+     *
+     * @param slice {@link SlicePayload} that is finished
+     */
     private synchronized void markSliceAsDone(SlicePayload slice) {
         log("Slice " + slice + " is done");
+        // the slice is no longer in progress
         this.slicesInProgress.remove(slice);
     }
 
-    private synchronized void abortSlice(SlicePayload slice) {
+    /**
+     * Report a lost slice
+     *
+     * @param slice {@link SlicePayload} that has been lost during processing
+     */
+    private synchronized void lostSlice(SlicePayload slice) {
         log("Slice " + slice + " added to lost slices");
+        // the slice is no longer in progress
         this.slicesInProgress.remove(slice);
         if (slice != null) {
+            // add the slice to the list slices
             MasterConfiguration.lostSlices.add(slice);
+            // send progress to all slaves
+            ProgressPayload progressPayload = new ProgressPayload(getLostSlices(), MasterConfiguration.currentSliceStart);
+            Message progressMessage = new Message(MessageType.MASTER_PROGRESS, progressPayload);
+            this.broadcaster.send(progressMessage);
         }
     }
 
+    /**
+     * Get all slices that are being lost at the point where the master fails
+     *
+     * @return {@link Queue} of lost slices
+     */
     private Queue<SlicePayload> getLostSlices() {
         final Queue<SlicePayload> lostSlices = new LinkedList<>(MasterConfiguration.lostSlices);
         // slices in progress are lost as well when the
@@ -163,6 +233,11 @@ public class Master implements Runnable {
         return lostSlices;
     }
 
+    /**
+     * Get the mission details that a slave need to start working
+     *
+     * @return {@link MultiMessage} with the mission details
+     */
     private MultiMessage collectMissionDetails() {
         MultiMessage out = new MultiMessage();
 
@@ -199,6 +274,9 @@ public class Master implements Runnable {
         return out;
     }
 
+    /**
+     * Send the mission details to every slave
+     */
     private void broadcastMissionDetails() {
         if (MasterConfiguration.startMillis == 0) {
             MasterConfiguration.startMillis = System.currentTimeMillis();
@@ -209,8 +287,18 @@ public class Master implements Runnable {
     }
 
 
+    /**
+     * Stop the master gracefully
+     */
     private synchronized void stop() {
         log("waiting for ConnectionHandlers to terminate ...");
+        // wait for all connection handlers to terminate.
+        // the connection handlers terminate on their own without
+        // sending a signal to them, because ...
+        // - the slave wants to get a new slice
+        // - the master has no more slices --> sends MASTER_EXIT
+        // - the slave exits
+        // - the connection handler terminates
         this.connectionHandlerThreads.forEach(t -> {
             try {
                 t.join();
@@ -219,9 +307,11 @@ public class Master implements Runnable {
             }
         });
 
+        // send the stop signal to the broadcaster
         log("sending stop signal to broadcaster ...");
         this.broadcaster.stop();
-        log("waiting for Broadcaster to terminate ...");
+        // wait for the broadcaster to terminate
+        log("waiting for broadcaster to terminate ...");
         try {
             this.broadcasterThread.join();
         } catch (InterruptedException e) {
@@ -235,14 +325,27 @@ public class Master implements Runnable {
         }
     }
 
+    /**
+     * Use to log
+     *
+     * @param s {@link String} to log
+     */
     private static void log(String s) {
         System.out.println(ConsoleColors.BLUE_BRIGHT + "Master        - " + s + ConsoleColors.RESET);
     }
 
+    /**
+     * Use to log errors
+     *
+     * @param s {@link String} to log as an error
+     */
     private static void err(String s) {
         Utils.err("Master        - " + s);
     }
 
+    /**
+     * Class to handle specific connections to slaves
+     */
     private class ConnectionHandler implements Runnable {
 
         private final Socket slave;
@@ -252,12 +355,22 @@ public class Master implements Runnable {
         private SlicePayload currentSlice;
         private int workers;
 
+        /**
+         * Create a new {@link ConnectionHandler}
+         *
+         * @param slave the socket of the slave
+         * @param broadcaster a broadcaster
+         */
         public ConnectionHandler(Socket slave, Broadcaster broadcaster) {
             this.slave = slave;
             log("Initializing new ConnectionHandler.");
             this.broadcaster = broadcaster;
         }
 
+        /**
+         * Method for the thread to execute.
+         * Contains the main loop to communicate with a slave
+         */
         @Override
         public void run() {
             log("Starting ConnectionHandler");
@@ -269,15 +382,21 @@ public class Master implements Runnable {
             ) {
                 // main loop to receive messages
                 while (this.running) {
+                    // wait for a message to be received
                     log("waiting for message to be received ...");
                     Message message = (Message) objectInputStream.readObject();
+
+                    // handle the incoming
                     final MultiMessage response = this.handleMessage(message);
 
+                    // The SLAVE_JOIN message is the first message, so we have to
+                    // add the slave to the broadcaster
                     if (message.getType() == MessageType.SLAVE_JOIN) {
                         // add to output streams for broadcasting
                         broadcaster.addOutputStream(this.slave.getInetAddress(), objectOutputStream);
                     }
 
+                    // if there is a response, send it to the slave
                     if (response != null) {
                         objectOutputStream.writeSyncedObjectFlush(response);
                     }
@@ -285,8 +404,6 @@ public class Master implements Runnable {
             } catch (IOException e) {
                 if (this.running) {
                     err("Object Input stream closed " + e);
-                    // Slave died
-                    abortSlice(this.currentSlice);
                 } else {
                     log("Slave disconnected on purpose.");
                 }
@@ -301,11 +418,24 @@ public class Master implements Runnable {
                 Message hostsMessage = new Message(MessageType.MASTER_HOSTS_LIST, hostsPayload);
                 broadcaster.send(hostsMessage);
                 ClientHandler.getInstance().notifyHostListChanged();
+                if (this.running) {
+                    // Slave died
+                    // this method cannot be called in the catch block, because
+                    // the method triggers a broadcast to all slaves. However,
+                    // in the catch block the stream of this slave is still
+                    // in the broadcaster (but not active anymore).
+                    lostSlice(this.currentSlice);
+                }
             }
 
             log("Terminated");
         }
 
+        /**
+         * This method handles incoming messages.
+         *
+         * @param m {@link MultiMessage} to handle
+         */
         private MultiMessage handleMessage(Message m) {
             log("Received message");
             return switch (m.getType()) {
@@ -318,6 +448,12 @@ public class Master implements Runnable {
             };
         }
 
+        /**
+         * Via this method a slave can join.
+         *
+         * @param m {@link Message} of type SLAVE_JOIN
+         * @return the mission details
+         */
         @SuppressWarnings("SameReturnValue")
         private MultiMessage handleJoin(Message m) {
             JoinPayload joinPayload = (JoinPayload) m.getPayload();
@@ -413,15 +549,23 @@ public class Master implements Runnable {
         }
     }
 
+    /**
+     * Class to broadcast messages to every slave
+     */
     private static class Broadcaster implements Runnable {
 
         private final ConcurrentMap<InetAddress, SyncedObjectOutputStream> streams = new ConcurrentHashMap<>();
         private final Queue<Message> queue = new LinkedList<>();
         private boolean running = true;
 
+        /**
+         * Method for the thread to execute.
+         * Contains the main loop for sending messages to every slave.
+         */
         @Override
         public void run() {
             while (this.running) {
+                // wait until there are messages in the queue to send
                 if (this.queue.isEmpty()) {
                     try {
                         // noinspection BusyWait
@@ -432,12 +576,15 @@ public class Master implements Runnable {
                     continue;
                 }
 
+                // put all messages to send in a multi message
                 MultiMessage mm = new MultiMessage();
                 while (!this.queue.isEmpty()) {
                     Message m = this.queue.remove();
                     log("broadcasting message of type: " + m.getType());
                     mm.addMessage(m);
                 }
+
+                // send the multi message to all slaves
                 for (InetAddress i : this.streams.keySet()) {
                     try {
                         this.streams.get(i).writeSyncedObjectFlush(mm);
@@ -448,25 +595,49 @@ public class Master implements Runnable {
             }
         }
 
+        /**
+         * Add an {@link SyncedObjectOutputStream} to send the broadcasts to
+         *
+         * @param address {@link InetAddress} of the slave
+         * @param stream {@link SyncedObjectOutputStream} the output stream of the slave to add
+         */
         public synchronized void addOutputStream(InetAddress address, SyncedObjectOutputStream stream) {
             log("Adding stream for broadcasting: " + address.getHostAddress());
             this.streams.put(address, stream);
         }
 
+        /**
+         * Remove a slave
+         *
+         * @param address {@link InetAddress} of the slave to remove
+         */
         public synchronized void removeOutputStream(InetAddress address) {
             log("Removing stream for broadcasting: " + address.getHostAddress());
             this.streams.remove(address);
         }
 
+        /**
+         * Boradcast a message to all slaves
+         *
+         * @param m {@link Message} submit a message to broadcast to the slaves
+         */
         public synchronized void send(Message m) {
             log("queued message of type: " + m.getType());
             this.queue.add(m);
         }
 
+        /**
+         * Use to log
+         *
+         * @param s {@link String} to log
+         */
         private static void log(String s) {
             System.out.println(ConsoleColors.YELLOW_BRIGHT + "Master        - Broadcaster - " + s + ConsoleColors.RESET);
         }
 
+        /**
+         * Stop the running broadcaster
+         */
         public synchronized void stop() {
             this.running = false;
         }
